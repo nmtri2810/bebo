@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: bebo-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-bebo}
+      POSTGRES_USER: ${POSTGRES_USER:-bebo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bebo}
+
+    ports:
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
+
+    volumes:
+      - bebo-postgres-data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U ${POSTGRES_USER:-bebo} -d ${POSTGRES_DB:-bebo}
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  bebo-postgres-data:

@@ -31,3 +31,21 @@ build/
 
 ### VS Code ###
 .vscode/
+
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# macOS
+.DS_Store
+
+# Java
+backend/target/
+*.log
+
+# Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
