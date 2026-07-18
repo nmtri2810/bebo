@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CycleSettingsRepository extends JpaRepository<CycleSettings, UUID> {
 
-  Optional<CycleSettings> findByUserId(UUID userId);
+  Optional<CycleSettings> findByUser_Id(UUID userId);
 }

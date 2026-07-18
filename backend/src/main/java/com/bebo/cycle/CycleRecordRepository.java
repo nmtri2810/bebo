@@ -8,13 +8,18 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CycleRecordRepository extends JpaRepository<CycleRecord, UUID> {
 
-  List<CycleRecord> findAllByUserIdOrderByStartDateDesc(UUID userId);
+  List<CycleRecord> findAllByUser_IdOrderByStartDateDesc(UUID userId);
 
-  List<CycleRecord> findTop7ByUserIdOrderByStartDateDesc(UUID userId);
+  /*
+   * 7 ngày bắt đầu tạo ra tối đa 6 khoảng
+   * thời gian giữa các chu kỳ.
+   */
+  List<CycleRecord> findTop7ByUser_IdOrderByStartDateDesc(UUID userId);
 
-  Optional<CycleRecord> findByIdAndUserId(UUID id, UUID userId);
+  Optional<CycleRecord> findByIdAndUser_Id(UUID recordId, UUID userId);
 
-  boolean existsByUserIdAndStartDate(UUID userId, LocalDate startDate);
+  boolean existsByUser_IdAndStartDate(UUID userId, LocalDate startDate);
 
-  boolean existsByUserIdAndStartDateAndIdNot(UUID userId, LocalDate startDate, UUID excludedId);
+  boolean existsByUser_IdAndStartDateAndIdNot(
+      UUID userId, LocalDate startDate, UUID excludedRecordId);
 }
