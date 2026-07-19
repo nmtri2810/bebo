@@ -19,3 +19,7 @@ export type CyclePrediction = {
   predictionSource: "DEFAULT_SETTING" | "AVERAGE_HISTORY";
   historicalCyclesUsed: number;
 };
+
+export type UpdateCycleRecordRequest = {
+  startDate: string;
+};
