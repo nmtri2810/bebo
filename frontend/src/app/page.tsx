@@ -57,7 +57,7 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (hasHydrated && accessToken) {
-      router.replace("/me");
+      router.replace("/dashboard");
     }
   }, [accessToken, hasHydrated, router]);
 
@@ -88,7 +88,7 @@ export default function AuthPage() {
         timezone: response.timezone,
       });
 
-      router.replace("/me");
+      router.replace(mode === "register" ? "/onboarding" : "/dashboard");
     } catch (error) {
       setErrorMessage(getErrorMessage(error, t("genericError")));
     } finally {
@@ -109,15 +109,15 @@ export default function AuthPage() {
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-[#f2f2f7] px-4 py-12">
-      <div className="relative w-full max-w-[420px]">
+      <div className="relative w-full max-w-105">
         <div className="absolute -top-12 right-0">
           <LanguageSwitcher />
         </div>
 
-        <Card className="overflow-hidden rounded-[30px] border border-black/[0.06] bg-white shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
+        <Card className="overflow-hidden rounded-[30px] border border-black/6 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
           <CardHeader className="flex flex-col items-center px-6 pb-5 pt-8 text-center">
             <div className="mb-5 flex flex-col items-center">
-              <div className="flex size-[68px] items-center justify-center rounded-[20px] bg-gradient-to-br from-[#ff375f] to-[#ff2d55] shadow-[0_8px_20px_rgba(255,45,85,0.25)]">
+              <div className="flex size-17 items-center justify-center rounded-[20px] bg-linear-to-br from-[#ff375f] to-[#ff2d55] shadow-[0_8px_20px_rgba(255,45,85,0.25)]">
                 <HeartPulse className="size-9 text-white" strokeWidth={2.2} />
               </div>
 
@@ -134,7 +134,7 @@ export default function AuthPage() {
               {isLogin ? t("welcomeBack") : t("createAccount")}
             </CardTitle>
 
-            <CardDescription className="mt-1 max-w-[310px] text-[15px] leading-6 text-[#636366]">
+            <CardDescription className="mt-1 max-w-77.5 text-[15px] leading-6 text-[#636366]">
               {isLogin ? t("loginDescription") : t("registerDescription")}
             </CardDescription>
           </CardHeader>

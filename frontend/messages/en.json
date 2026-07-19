@@ -33,5 +33,25 @@
     "timezone": "Time zone",
     "status": "Status",
     "sessionInvalid": "Your session has expired. Please sign in again."
+  },
+  "Onboarding": {
+    "step": "Cycle Tracking Setup",
+    "title": "When did the most recent period start?",
+    "description": "Choose the first day of the most recent period. This helps bebo estimate when the next cycle may begin.",
+    "dateLabel": "Period start date",
+    "dateHint": "You can update this date later.",
+    "continue": "Continue",
+    "saving": "Saving...",
+    "privacy": "Predictions are estimates and may change over time.",
+    "genericError": "We couldn't save this date. Please try again."
+  },
+  "Dashboard": {
+    "title": "Cycle tracking is ready",
+    "description": "Your first period date has been saved.",
+    "latestPeriod": "Most recent period",
+    "dashboardComing": "Your cycle prediction will appear here next.",
+    "logout": "Sign out",
+    "loading": "Loading your cycle data...",
+    "genericError": "We couldn't load your cycle data."
   }
 }

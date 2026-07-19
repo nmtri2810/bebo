@@ -33,5 +33,25 @@
     "timezone": "Múi giờ",
     "status": "Trạng thái",
     "sessionInvalid": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
+  },
+  "Onboarding": {
+    "step": "Thiết lập theo dõi chu kỳ",
+    "title": "Kỳ kinh gần nhất bắt đầu khi nào?",
+    "description": "Chọn ngày đầu tiên của kỳ kinh gần nhất. Thông tin này giúp bebo ước tính thời điểm chu kỳ tiếp theo có thể bắt đầu.",
+    "dateLabel": "Ngày bắt đầu kỳ kinh",
+    "dateHint": "Bạn có thể thay đổi ngày này sau.",
+    "continue": "Tiếp tục",
+    "saving": "Đang lưu...",
+    "privacy": "Dự đoán chỉ mang tính ước tính và có thể thay đổi theo thời gian.",
+    "genericError": "Không thể lưu ngày này. Vui lòng thử lại."
+  },
+  "Dashboard": {
+    "title": "Theo dõi chu kỳ đã sẵn sàng",
+    "description": "Ngày bắt đầu kỳ kinh đầu tiên đã được lưu.",
+    "latestPeriod": "Kỳ kinh gần nhất",
+    "dashboardComing": "Dự đoán chu kỳ sẽ được hiển thị tại đây.",
+    "logout": "Đăng xuất",
+    "loading": "Đang tải dữ liệu chu kỳ...",
+    "genericError": "Không thể tải dữ liệu chu kỳ."
   }
 }
