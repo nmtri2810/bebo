@@ -86,6 +86,29 @@
     "delete": "Delete",
     "deleting": "Deleting...",
     "updateError": "We couldn't update this date.",
-    "deleteError": "We couldn't delete this record."
+    "deleteError": "We couldn't delete this record.",
+    "settings": "Settings"
+  },
+  "Settings": {
+    "title": "Settings",
+    "description": "Adjust how cycle predictions and reminders work.",
+    "cycleSection": "Cycle",
+    "defaultCycleLength": "Default cycle length",
+    "defaultCycleLengthHint": "Used until enough cycle history is available.",
+    "days": "days",
+    "reminderSection": "Reminder",
+    "reminderDaysBefore": "Remind me before",
+    "reminderDaysHint": "Choose how many days before the expected period.",
+    "notificationTime": "Notification time",
+    "accountSection": "Location",
+    "timezone": "Time zone",
+    "timezoneHint": "Use an IANA time zone such as Asia/Ho_Chi_Minh.",
+    "save": "Save changes",
+    "saving": "Saving...",
+    "saved": "Settings saved",
+    "loading": "Loading settings...",
+    "loadError": "We couldn't load your settings.",
+    "saveError": "We couldn't save your settings.",
+    "back": "Back to dashboard"
   }
 }

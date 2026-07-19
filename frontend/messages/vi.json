@@ -86,6 +86,29 @@
     "delete": "Xóa",
     "deleting": "Đang xóa...",
     "updateError": "Không thể cập nhật ngày này.",
-    "deleteError": "Không thể xóa bản ghi."
+    "deleteError": "Không thể xóa bản ghi.",
+    "settings": "Cài đặt"
+  },
+  "Settings": {
+    "title": "Cài đặt",
+    "description": "Điều chỉnh cách dự đoán chu kỳ và gửi lời nhắc.",
+    "cycleSection": "Chu kỳ",
+    "defaultCycleLength": "Độ dài chu kỳ mặc định",
+    "defaultCycleLengthHint": "Được sử dụng khi chưa có đủ lịch sử chu kỳ.",
+    "days": "ngày",
+    "reminderSection": "Lời nhắc",
+    "reminderDaysBefore": "Nhắc trước",
+    "reminderDaysHint": "Chọn số ngày cần nhắc trước kỳ kinh dự kiến.",
+    "notificationTime": "Giờ thông báo",
+    "accountSection": "Vị trí",
+    "timezone": "Múi giờ",
+    "timezoneHint": "Dùng múi giờ IANA, ví dụ Asia/Ho_Chi_Minh.",
+    "save": "Lưu thay đổi",
+    "saving": "Đang lưu...",
+    "saved": "Đã lưu cài đặt",
+    "loading": "Đang tải cài đặt...",
+    "loadError": "Không thể tải cài đặt.",
+    "saveError": "Không thể lưu cài đặt.",
+    "back": "Quay lại tổng quan"
   }
 }

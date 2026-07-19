@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { Bell, CalendarDays, HeartPulse, LogOut } from "lucide-react";
+import { Bell, CalendarDays, HeartPulse, LogOut, Settings2 } from "lucide-react";
 
 import { useLocale, useTranslations } from "next-intl";
 
@@ -21,6 +21,7 @@ import { useAuthStore } from "@/stores/auth-store";
 
 import type { CyclePrediction, CycleRecord } from "@/types/cycle";
 import { ManageCycleDialog } from "@/features/cycles/components/manage-cycle-dialog";
+import Link from "next/link";
 
 function parseLocalDate(value: string): Date {
   const [year, month, day] = value.split("-").map(Number);
@@ -258,7 +259,18 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <LanguageSwitcher />
+          <div className="flex items-center gap-2">
+            <Link
+              href="/settings"
+              aria-label={t("settings")}
+              title={t("settings")}
+              className="inline-flex size-9 items-center justify-center rounded-full border border-black/6 bg-white text-[#636366] shadow-[0_3px_10px_rgba(0,0,0,0.05)] transition hover:bg-[#f9f9fb] hover:text-[#007aff]"
+            >
+              <Settings2 className="size-4" />
+            </Link>
+
+            <LanguageSwitcher />
+          </div>
         </header>
 
         <div className="mb-5 flex items-end justify-between gap-4">
