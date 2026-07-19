@@ -1,0 +1,37 @@
+{
+  "Common": {
+    "english": "Tiếng Anh",
+    "vietnamese": "Tiếng Việt",
+    "switchLanguage": "Chuyển sang {language}",
+    "loading": "Đang tải...",
+    "logout": "Đăng xuất"
+  },
+  "Auth": {
+    "brand": "bebo",
+    "tagline": "Một chút hỗ trợ để bạn quan tâm tốt hơn.",
+    "welcomeBack": "Chào mừng bạn trở lại",
+    "createAccount": "Tạo tài khoản",
+    "loginDescription": "Theo dõi những khoảnh khắc thực sự quan trọng.",
+    "registerDescription": "Bắt đầu với thông tin cơ bản. Bạn có thể thay đổi sau.",
+    "loginTab": "Đăng nhập",
+    "registerTab": "Tạo tài khoản",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "password": "Mật khẩu",
+    "passwordPlaceholder": "Tối thiểu 8 ký tự",
+    "signIn": "Tiếp tục",
+    "create": "Bắt đầu",
+    "processing": "Vui lòng chờ...",
+    "privacy": "Thông tin của bạn được giữ riêng tư.",
+    "genericError": "Đã xảy ra lỗi. Vui lòng thử lại."
+  },
+  "Profile": {
+    "title": "Mọi thứ đã sẵn sàng",
+    "description": "Tài khoản của bạn đã được kết nối.",
+    "account": "Tài khoản",
+    "email": "Email",
+    "timezone": "Múi giờ",
+    "status": "Trạng thái",
+    "sessionInvalid": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
+  }
+}
