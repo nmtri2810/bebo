@@ -2,18 +2,32 @@
 
 import { type FormEvent, useEffect, useState } from "react";
 
-import { Bell, CalendarDays, Check, ChevronLeft, Clock3, Globe2, HeartPulse } from "lucide-react";
+import {
+  Bell,
+  BellRing,
+  CalendarDays,
+  Check,
+  ChevronRight,
+  Clock3,
+  Globe2,
+  LogOut,
+  Mail,
+  SlidersHorizontal,
+} from "lucide-react";
 
 import Link from "next/link";
 
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 
 import { useRouter } from "next/navigation";
 
-import { LanguageSwitcher } from "@/components/language-switcher";
+import { AppShell } from "@/components/app-shell";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+import { TelegramConnectionCard } from "@/features/telegram/components/telegram-connection-card";
 
 import { ApiClientError } from "@/lib/api/api-client";
 
@@ -22,7 +36,6 @@ import { getSettings, updateSettings } from "@/lib/api/settings-api";
 import { useAuthStore } from "@/stores/auth-store";
 
 import type { Settings } from "@/types/settings";
-import { TelegramConnectionCard } from "@/features/telegram/components/telegram-connection-card";
 
 type SettingsForm = {
   defaultCycleLength: string;
@@ -59,7 +72,6 @@ function getErrorMessage(error: unknown, fallback: string): string {
 
 export default function SettingsPage() {
   const router = useRouter();
-  const locale = useLocale();
   const t = useTranslations("Settings");
 
   const accessToken = useAuthStore((state) => state.accessToken);
@@ -108,6 +120,7 @@ export default function SettingsPage() {
         if (error instanceof ApiClientError && error.status === 401) {
           clearSession();
           router.replace("/");
+
           return;
         }
 
@@ -175,6 +188,7 @@ export default function SettingsPage() {
       if (error instanceof ApiClientError && error.status === 401) {
         clearSession();
         router.replace("/");
+
         return;
       }
 
@@ -182,6 +196,11 @@ export default function SettingsPage() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleLogout = () => {
+    clearSession();
+    router.replace("/");
   };
 
   if (!hasHydrated || isLoading) {
@@ -197,34 +216,25 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="min-h-dvh bg-[#f2f2f7] px-4 py-6 sm:py-8">
-      <div className="mx-auto w-full max-w-130">
-        <header className="mb-8 flex items-center justify-between">
-          <Link
-            href="/dashboard"
-            className="inline-flex h-10 items-center gap-1 rounded-full px-2 text-sm font-semibold text-[#007aff] transition hover:bg-black/4"
-          >
-            <ChevronLeft className="size-5" />
-
-            {t("back")}
-          </Link>
-
-          <LanguageSwitcher />
-        </header>
-
-        <div className="mb-7 flex items-center gap-3">
-          <div className="flex size-12 items-center justify-center rounded-[15px] bg-linear-to-br from-[#ff375f] to-[#ff2d55] shadow-[0_6px_16px_rgba(255,45,85,0.2)]">
-            <HeartPulse className="size-6 text-white" />
-          </div>
-
-          <div>
-            <h1 className="text-[30px] font-bold leading-tight tracking-[-0.04em] text-[#1c1c1e]">{t("title")}</h1>
-
-            <p className="mt-1 text-sm text-[#8e8e93]">{t("description")}</p>
-          </div>
+    <AppShell maxWidthClassName="max-w-6xl">
+      <div className="mb-8 flex items-center gap-3 lg:mb-10 lg:block">
+        <div className="flex size-12 shrink-0 items-center justify-center rounded-[15px] bg-linear-to-br from-[#5856d6] to-[#007aff] shadow-[0_6px_16px_rgba(88,86,214,0.2)] lg:hidden">
+          <SlidersHorizontal className="size-6 text-white" />
         </div>
 
-        <form className="space-y-7" onSubmit={handleSubmit}>
+        <div>
+          <h1 className="text-[30px] font-bold leading-tight tracking-[-0.04em] text-[#1c1c1e] lg:text-[40px]">
+            {t("title")}
+          </h1>
+
+          <p className="mt-1 max-w-2xl text-sm leading-5 text-[#8e8e93] lg:mt-2 lg:text-[16px] lg:leading-6">
+            {t("description")}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)]">
+        <form className="min-w-0 space-y-7" onSubmit={handleSubmit}>
           <SettingsSection icon={<CalendarDays className="size-5 text-[#ff2d55]" />} title={t("cycleSection")}>
             <SettingsField label={t("defaultCycleLength")} hint={t("defaultCycleLengthHint")}>
               <div className="relative">
@@ -246,37 +256,39 @@ export default function SettingsPage() {
           </SettingsSection>
 
           <SettingsSection icon={<Bell className="size-5 text-[#007aff]" />} title={t("reminderSection")}>
-            <SettingsField label={t("reminderDaysBefore")} hint={t("reminderDaysHint")}>
-              <div className="relative">
-                <Input
-                  type="number"
-                  min={0}
-                  max={14}
-                  value={form.reminderDaysBefore}
-                  onChange={(event) => updateField("reminderDaysBefore", event.target.value)}
-                  className="h-12 rounded-[14px] border-0 bg-[#f2f2f7] pr-16 text-[16px] shadow-none"
-                  required
-                />
+            <div className="grid gap-5 sm:grid-cols-2">
+              <SettingsField label={t("reminderDaysBefore")} hint={t("reminderDaysHint")}>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={14}
+                    value={form.reminderDaysBefore}
+                    onChange={(event) => updateField("reminderDaysBefore", event.target.value)}
+                    className="h-12 rounded-[14px] border-0 bg-[#f2f2f7] pr-16 text-[16px] shadow-none"
+                    required
+                  />
 
-                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[#8e8e93]">
-                  {t("days")}
-                </span>
-              </div>
-            </SettingsField>
+                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[#8e8e93]">
+                    {t("days")}
+                  </span>
+                </div>
+              </SettingsField>
 
-            <SettingsField label={t("notificationTime")}>
-              <div className="relative">
-                <Clock3 className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#007aff]" />
+              <SettingsField label={t("notificationTime")}>
+                <div className="relative">
+                  <Clock3 className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#007aff]" />
 
-                <Input
-                  type="time"
-                  value={form.notificationTime}
-                  onChange={(event) => updateField("notificationTime", event.target.value)}
-                  className="h-12 rounded-[14px] border-0 bg-[#f2f2f7] pl-12 text-[16px] shadow-none"
-                  required
-                />
-              </div>
-            </SettingsField>
+                  <Input
+                    type="time"
+                    value={form.notificationTime}
+                    onChange={(event) => updateField("notificationTime", event.target.value)}
+                    className="h-12 rounded-[14px] border-0 bg-[#f2f2f7] pl-12 text-[16px] shadow-none"
+                    required
+                  />
+                </div>
+              </SettingsField>
+            </div>
           </SettingsSection>
 
           <SettingsSection icon={<Globe2 className="size-5 text-[#34c759]" />} title={t("accountSection")}>
@@ -301,6 +313,7 @@ export default function SettingsPage() {
           {savedMessage && (
             <div className="flex items-center gap-2 rounded-[16px] bg-[#34c759]/10 px-4 py-3 text-sm font-medium text-[#248a3d]">
               <Check className="size-4" />
+
               {savedMessage}
             </div>
           )}
@@ -313,18 +326,67 @@ export default function SettingsPage() {
             {isSaving ? t("saving") : t("save")}
           </Button>
 
-          <p className="text-center text-xs text-[#8e8e93]">
-            {locale === "vi"
-              ? "Thay đổi sẽ được áp dụng cho lần dự đoán tiếp theo."
-              : "Changes apply to the next prediction."}
-          </p>
+          <p className="text-center text-xs text-[#8e8e93]">{t("changesHint")}</p>
         </form>
 
-        <div className="mt-8">
+        <aside className="min-w-0 space-y-8">
           <TelegramConnectionCard accessToken={accessToken} />
-        </div>
+
+          <section>
+            <SettingsSectionTitle title={t("activitySection")} />
+
+            <Link
+              href="/notifications"
+              className="flex min-h-19 items-center gap-4 rounded-[22px] bg-white px-5 py-4 shadow-[0_5px_20px_rgba(0,0,0,0.05)] transition hover:bg-[#fafafa] active:scale-[0.995]"
+            >
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-[#5856d6]/10">
+                <BellRing className="size-5 text-[#5856d6]" />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p className="text-[16px] font-semibold text-[#1c1c1e]">{t("notificationHistory")}</p>
+
+                <p className="mt-0.5 text-[13px] leading-5 text-[#8e8e93]">{t("notificationHistoryHint")}</p>
+              </div>
+
+              <ChevronRight className="size-5 shrink-0 text-[#c7c7cc]" />
+            </Link>
+          </section>
+
+          <section>
+            <SettingsSectionTitle title={t("accountTitle")} />
+
+            <div className="overflow-hidden rounded-[22px] bg-white shadow-[0_5px_20px_rgba(0,0,0,0.05)]">
+              <div className="flex min-h-16 items-center gap-3 px-5 py-4">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-[#f2f2f7]">
+                  <Mail className="size-4 text-[#007aff]" />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium text-[#8e8e93]">{t("email")}</p>
+
+                  <p className="mt-0.5 truncate text-[15px] font-medium text-[#1c1c1e]">{user?.email}</p>
+                </div>
+              </div>
+
+              <div className="ml-17 border-t border-black/6" />
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex min-h-15 w-full items-center gap-3 px-5 py-4 text-left text-[#d70015] transition hover:bg-[#ff3b30]/6"
+              >
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-[#ff3b30]/10">
+                  <LogOut className="size-4" />
+                </div>
+
+                <span className="text-[15px] font-semibold">{t("signOut")}</span>
+              </button>
+            </div>
+          </section>
+        </aside>
       </div>
-    </main>
+    </AppShell>
   );
 }
 
@@ -343,9 +405,19 @@ function SettingsSection({ icon, title, children }: SettingsSectionProps) {
         <h2 className="text-[13px] font-semibold uppercase tracking-[0.06em] text-[#8e8e93]">{title}</h2>
       </div>
 
-      <div className="space-y-5 rounded-[22px] bg-white p-5 shadow-[0_5px_20px_rgba(0,0,0,0.05)]">{children}</div>
+      <div className="space-y-5 rounded-[24px] bg-white p-5 shadow-[0_6px_24px_rgba(0,0,0,0.055)] sm:p-6">
+        {children}
+      </div>
     </section>
   );
+}
+
+type SettingsSectionTitleProps = {
+  title: string;
+};
+
+function SettingsSectionTitle({ title }: SettingsSectionTitleProps) {
+  return <h2 className="mb-3 px-1 text-[13px] font-semibold uppercase tracking-[0.06em] text-[#8e8e93]">{title}</h2>;
 }
 
 type SettingsFieldProps = {

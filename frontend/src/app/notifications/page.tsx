@@ -14,11 +14,12 @@ import {
   Send,
 } from "lucide-react";
 
-import Link from "next/link";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+
 import { useRouter } from "next/navigation";
 
-import { LanguageSwitcher } from "@/components/language-switcher";
+import { AppShell } from "@/components/app-shell";
+
 import { Button } from "@/components/ui/button";
 
 import { ApiClientError } from "@/lib/api/api-client";
@@ -31,15 +32,7 @@ import type { NotificationHistoryItem, NotificationHistoryPage } from "@/types/n
 
 const PAGE_SIZE = 20;
 
-type Copy = {
-  back: string;
-  title: string;
-  description: string;
-  loading: string;
-  loadError: string;
-  retry: string;
-  emptyTitle: string;
-  emptyDescription: string;
+type NotificationHistoryCopy = {
   estimatedPeriod: string;
   sent: string;
   failed: string;
@@ -51,66 +44,7 @@ type Copy = {
   attempts: string;
   attempt: string;
   failureDetails: string;
-  previous: string;
-  next: string;
-  page: string;
 };
-
-const copyByLocale: Record<"en" | "vi", Copy> = {
-  en: {
-    back: "Settings",
-    title: "Notification history",
-    description: "Review cycle reminders sent through Telegram.",
-    loading: "Loading notification history...",
-    loadError: "We couldn't load notification history.",
-    retry: "Try again",
-    emptyTitle: "No notifications yet",
-    emptyDescription: "Sent and failed cycle reminders will appear here.",
-    estimatedPeriod: "Estimated period",
-    sent: "Sent",
-    failed: "Failed",
-    retryScheduled: "Retry scheduled",
-    telegram: "Telegram",
-    sentAt: "Sent",
-    scheduledFor: "Scheduled",
-    nextRetry: "Next retry",
-    attempts: "attempts",
-    attempt: "attempt",
-    failureDetails: "Failure details",
-    previous: "Previous",
-    next: "Next",
-    page: "Page",
-  },
-
-  vi: {
-    back: "Cài đặt",
-    title: "Lịch sử thông báo",
-    description: "Xem lại các lời nhắc chu kỳ được gửi qua Telegram.",
-    loading: "Đang tải lịch sử thông báo...",
-    loadError: "Không thể tải lịch sử thông báo.",
-    retry: "Thử lại",
-    emptyTitle: "Chưa có thông báo",
-    emptyDescription: "Các lời nhắc đã gửi hoặc gửi thất bại sẽ xuất hiện tại đây.",
-    estimatedPeriod: "Kỳ kinh dự kiến",
-    sent: "Đã gửi",
-    failed: "Thất bại",
-    retryScheduled: "Đã lên lịch thử lại",
-    telegram: "Telegram",
-    sentAt: "Đã gửi",
-    scheduledFor: "Dự kiến gửi",
-    nextRetry: "Thử lại lúc",
-    attempts: "lần thử",
-    attempt: "lần thử",
-    failureDetails: "Chi tiết lỗi",
-    previous: "Trước",
-    next: "Sau",
-    page: "Trang",
-  },
-};
-
-function resolveCopy(locale: string): Copy {
-  return locale.startsWith("vi") ? copyByLocale.vi : copyByLocale.en;
-}
 
 function parseLocalDate(value: string): Date {
   const [year, month, day] = value.split("-").map(Number);
@@ -142,7 +76,7 @@ async function fetchHistory(accessToken: string, page: number): Promise<Notifica
 export default function NotificationsPage() {
   const router = useRouter();
   const locale = useLocale();
-  const copy = resolveCopy(locale);
+  const t = useTranslations("Notifications");
 
   const accessToken = useAuthStore((state) => state.accessToken);
 
@@ -189,10 +123,11 @@ export default function NotificationsPage() {
         if (error instanceof ApiClientError && error.status === 401) {
           clearSession();
           router.replace("/");
+
           return;
         }
 
-        setErrorMessage(copy.loadError);
+        setErrorMessage(t("loadError"));
       })
       .finally(() => {
         if (!cancelled) {
@@ -203,7 +138,7 @@ export default function NotificationsPage() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, clearSession, copy.loadError, hasHydrated, page, router]);
+  }, [accessToken, clearSession, hasHydrated, page, router, t]);
 
   const loadPage = (nextPage: number) => {
     if (nextPage < 0 || nextPage === page) {
@@ -226,15 +161,17 @@ export default function NotificationsPage() {
     fetchHistory(accessToken, page)
       .then((result) => {
         setHistoryPage(result);
+        setErrorMessage(null);
       })
       .catch((error: unknown) => {
         if (error instanceof ApiClientError && error.status === 401) {
           clearSession();
           router.replace("/");
+
           return;
         }
 
-        setErrorMessage(copy.loadError);
+        setErrorMessage(t("loadError"));
       })
       .finally(() => {
         setIsLoading(false);
@@ -242,7 +179,7 @@ export default function NotificationsPage() {
   };
 
   if (!hasHydrated) {
-    return <LoadingPage message={copy.loading} />;
+    return <LoadingPage message={t("loading")} />;
   }
 
   if (!accessToken) {
@@ -251,116 +188,121 @@ export default function NotificationsPage() {
 
   const timezone = user?.timezone ?? "UTC";
 
+  const copy: NotificationHistoryCopy = {
+    estimatedPeriod: t("estimatedPeriod"),
+
+    sent: t("sent"),
+    failed: t("failed"),
+
+    retryScheduled: t("retryScheduled"),
+
+    telegram: t("telegram"),
+    sentAt: t("sentAt"),
+
+    scheduledFor: t("scheduledFor"),
+
+    nextRetry: t("nextRetry"),
+    attempts: t("attempts"),
+    attempt: t("attempt"),
+
+    failureDetails: t("failureDetails"),
+  };
+
   return (
-    <main className="min-h-dvh bg-[#f2f2f7] px-4 py-6 sm:py-8">
-      <div className="mx-auto w-full max-w-140">
-        <header className="mb-8 flex items-center justify-between">
-          <Link
-            href="/settings"
-            className="inline-flex h-10 items-center gap-1 rounded-full px-2 text-sm font-semibold text-[#007aff] transition hover:bg-black/4"
-          >
-            <ChevronLeft className="size-5" />
-
-            {copy.back}
-          </Link>
-
-          <LanguageSwitcher />
-        </header>
-
-        <div className="mb-7 flex items-start gap-3">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-[15px] bg-linear-to-br from-[#5856d6] to-[#af52de] shadow-[0_6px_16px_rgba(88,86,214,0.2)]">
-            <BellRing className="size-6 text-white" />
-          </div>
-
-          <div>
-            <h1 className="text-[30px] font-bold leading-tight tracking-[-0.04em] text-[#1c1c1e]">{copy.title}</h1>
-
-            <p className="mt-1 text-sm leading-5 text-[#8e8e93]">{copy.description}</p>
-          </div>
+    <AppShell maxWidthClassName="max-w-140">
+      <div className="mb-7 flex items-start gap-3">
+        <div className="flex size-12 shrink-0 items-center justify-center rounded-[15px] bg-linear-to-br from-[#5856d6] to-[#af52de] shadow-[0_6px_16px_rgba(88,86,214,0.2)]">
+          <BellRing className="size-6 text-white" />
         </div>
 
-        {errorMessage && (
-          <div className="mb-5 rounded-[18px] bg-[#ff3b30]/10 p-4">
-            <p className="text-sm text-[#d70015]">{errorMessage}</p>
+        <div>
+          <h1 className="text-[30px] font-bold leading-tight tracking-[-0.04em] text-[#1c1c1e]">{t("title")}</h1>
 
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={reloadCurrentPage}
-              className="mt-2 h-9 rounded-[11px] px-3 text-[#d70015] hover:bg-[#ff3b30]/10 hover:text-[#d70015]"
-            >
-              <RefreshCw className="size-4" />
-
-              {copy.retry}
-            </Button>
-          </div>
-        )}
-
-        {isLoading ? (
-          <div className="flex min-h-52 flex-col items-center justify-center rounded-[24px] bg-white shadow-[0_5px_20px_rgba(0,0,0,0.05)]">
-            <LoaderCircle className="size-6 animate-spin text-[#8e8e93]" />
-
-            <p className="mt-3 text-sm text-[#8e8e93]">{copy.loading}</p>
-          </div>
-        ) : historyPage && historyPage.items.length > 0 ? (
-          <div className="space-y-4">
-            {historyPage.items.map((item) => (
-              <NotificationHistoryCard key={item.id} item={item} copy={copy} locale={locale} timezone={timezone} />
-            ))}
-
-            {historyPage.totalPages > 1 && (
-              <div className="flex items-center justify-between pt-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={historyPage.first}
-                  onClick={() => loadPage(historyPage.page - 1)}
-                  className="h-10 rounded-full bg-white px-4 shadow-[0_3px_12px_rgba(0,0,0,0.05)]"
-                >
-                  <ChevronLeft className="size-4" />
-
-                  {copy.previous}
-                </Button>
-
-                <p className="text-sm text-[#8e8e93]">
-                  {copy.page} {historyPage.page + 1}
-                  {" / "}
-                  {historyPage.totalPages}
-                </p>
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={historyPage.last}
-                  onClick={() => loadPage(historyPage.page + 1)}
-                  className="h-10 rounded-full bg-white px-4 shadow-[0_3px_12px_rgba(0,0,0,0.05)]"
-                >
-                  {copy.next}
-
-                  <ChevronRight className="size-4" />
-                </Button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="flex min-h-56 flex-col items-center justify-center rounded-[24px] bg-white px-6 text-center shadow-[0_5px_20px_rgba(0,0,0,0.05)]">
-            <div className="flex size-14 items-center justify-center rounded-full bg-[#5856d6]/10">
-              <BellRing className="size-7 text-[#5856d6]" />
-            </div>
-
-            <h2 className="mt-4 text-[18px] font-semibold text-[#1c1c1e]">{copy.emptyTitle}</h2>
-
-            <p className="mt-1 max-w-85 text-sm leading-5 text-[#8e8e93]">{copy.emptyDescription}</p>
-          </div>
-        )}
+          <p className="mt-1 text-sm leading-5 text-[#8e8e93]">{t("description")}</p>
+        </div>
       </div>
-    </main>
+
+      {errorMessage && (
+        <div className="mb-5 rounded-[18px] bg-[#ff3b30]/10 p-4">
+          <p className="text-sm text-[#d70015]">{errorMessage}</p>
+
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={reloadCurrentPage}
+            className="mt-2 h-9 rounded-[11px] px-3 text-[#d70015] hover:bg-[#ff3b30]/10 hover:text-[#d70015]"
+          >
+            <RefreshCw className="size-4" />
+
+            {t("retry")}
+          </Button>
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="flex min-h-52 flex-col items-center justify-center rounded-[24px] bg-white shadow-[0_5px_20px_rgba(0,0,0,0.05)]">
+          <LoaderCircle className="size-6 animate-spin text-[#8e8e93]" />
+
+          <p className="mt-3 text-sm text-[#8e8e93]">{t("loading")}</p>
+        </div>
+      ) : historyPage && historyPage.items.length > 0 ? (
+        <div className="space-y-4">
+          {historyPage.items.map((item) => (
+            <NotificationHistoryCard key={item.id} item={item} copy={copy} locale={locale} timezone={timezone} />
+          ))}
+
+          {historyPage.totalPages > 1 && (
+            <div className="flex items-center justify-between pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={historyPage.first}
+                onClick={() => loadPage(historyPage.page - 1)}
+                className="h-10 rounded-full bg-white px-4 shadow-[0_3px_12px_rgba(0,0,0,0.05)]"
+              >
+                <ChevronLeft className="size-4" />
+
+                {t("previous")}
+              </Button>
+
+              <p className="text-sm text-[#8e8e93]">
+                {t("page")} {historyPage.page + 1}
+                {" / "}
+                {historyPage.totalPages}
+              </p>
+
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={historyPage.last}
+                onClick={() => loadPage(historyPage.page + 1)}
+                className="h-10 rounded-full bg-white px-4 shadow-[0_3px_12px_rgba(0,0,0,0.05)]"
+              >
+                {t("next")}
+
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="flex min-h-56 flex-col items-center justify-center rounded-[24px] bg-white px-6 text-center shadow-[0_5px_20px_rgba(0,0,0,0.05)]">
+          <div className="flex size-14 items-center justify-center rounded-full bg-[#5856d6]/10">
+            <BellRing className="size-7 text-[#5856d6]" />
+          </div>
+
+          <h2 className="mt-4 text-[18px] font-semibold text-[#1c1c1e]">{t("emptyTitle")}</h2>
+
+          <p className="mt-1 max-w-85 text-sm leading-5 text-[#8e8e93]">{t("emptyDescription")}</p>
+        </div>
+      )}
+    </AppShell>
   );
 }
 
 type NotificationHistoryCardProps = {
   item: NotificationHistoryItem;
-  copy: Copy;
+  copy: NotificationHistoryCopy;
   locale: string;
   timezone: string;
 };

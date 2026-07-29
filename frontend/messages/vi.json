@@ -6,6 +6,13 @@
     "loading": "Đang tải...",
     "logout": "Đăng xuất"
   },
+  "Navigation": {
+    "brandSubtitle": "Better Boyfriend",
+    "primaryNavigation": "Điều hướng chính",
+    "overview": "Tổng quan",
+    "notifications": "Thông báo",
+    "settings": "Cài đặt"
+  },
   "Auth": {
     "brand": "bebo",
     "tagline": "Một chút hỗ trợ để bạn quan tâm tốt hơn.",
@@ -48,8 +55,8 @@
   "Dashboard": {
     "brandSubtitle": "Better Boyfriend",
     "greeting": "Tổng quan chu kỳ",
-    "description": "Thông tin ước tính đơn giản về chu kỳ tiếp theo.",
-    "nextPeriod": "Kỳ tiếp theo",
+    "description": "Thông tin ước tính về chu kỳ tiếp theo của người bạn yêu thương.",
+    "nextPeriod": "Kỳ tiếp theo của người ấy",
     "expectedDate": "Ngày dự kiến bắt đầu",
     "daysUntil": "{count, plural, =0 {Dự kiến hôm nay} other {Còn # ngày}}",
     "daysPast": "Dự đoán đã qua {count} ngày",
@@ -89,6 +96,29 @@
     "deleteError": "Không thể xóa bản ghi.",
     "settings": "Cài đặt"
   },
+  "Notifications": {
+    "title": "Lịch sử thông báo",
+    "description": "Xem lại các lời nhắc chu kỳ được gửi riêng tư qua Telegram.",
+    "loading": "Đang tải lịch sử thông báo...",
+    "loadError": "Không thể tải lịch sử thông báo.",
+    "retry": "Thử lại",
+    "emptyTitle": "Chưa có thông báo",
+    "emptyDescription": "Các lời nhắc đã gửi hoặc gửi thất bại sẽ xuất hiện tại đây sau lần nhắc đầu tiên.",
+    "estimatedPeriod": "Kỳ kinh dự kiến",
+    "sent": "Đã gửi",
+    "failed": "Thất bại",
+    "retryScheduled": "Đã lên lịch thử lại",
+    "telegram": "Telegram",
+    "sentAt": "Đã gửi",
+    "scheduledFor": "Dự kiến gửi",
+    "nextRetry": "Thử lại lúc",
+    "attempts": "lần thử",
+    "attempt": "lần thử",
+    "failureDetails": "Chi tiết lỗi",
+    "previous": "Trước",
+    "next": "Sau",
+    "page": "Trang"
+  },
   "Settings": {
     "title": "Cài đặt",
     "description": "Điều chỉnh cách dự đoán chu kỳ và gửi lời nhắc.",
@@ -100,7 +130,7 @@
     "reminderDaysBefore": "Nhắc trước",
     "reminderDaysHint": "Chọn số ngày cần nhắc trước kỳ kinh dự kiến.",
     "notificationTime": "Giờ thông báo",
-    "accountSection": "Vị trí",
+    "accountSection": "Múi giờ",
     "timezone": "Múi giờ",
     "timezoneHint": "Dùng múi giờ IANA, ví dụ Asia/Ho_Chi_Minh.",
     "save": "Lưu thay đổi",
@@ -109,7 +139,14 @@
     "loading": "Đang tải cài đặt...",
     "loadError": "Không thể tải cài đặt.",
     "saveError": "Không thể lưu cài đặt.",
-    "back": "Quay lại tổng quan"
+    "back": "Quay lại tổng quan",
+    "changesHint": "Thay đổi sẽ được áp dụng cho lần dự đoán và lời nhắc tiếp theo.",
+    "activitySection": "Hoạt động",
+    "notificationHistory": "Lịch sử thông báo",
+    "notificationHistoryHint": "Xem các lời nhắc đã gửi, thất bại hoặc được thử lại.",
+    "accountTitle": "Tài khoản",
+    "email": "Email",
+    "signOut": "Đăng xuất"
   },
   "Telegram": {
     "section": "Thông báo",
