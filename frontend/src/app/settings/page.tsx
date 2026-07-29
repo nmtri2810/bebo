@@ -22,6 +22,7 @@ import { getSettings, updateSettings } from "@/lib/api/settings-api";
 import { useAuthStore } from "@/stores/auth-store";
 
 import type { Settings } from "@/types/settings";
+import { TelegramConnectionCard } from "@/features/telegram/components/telegram-connection-card";
 
 type SettingsForm = {
   defaultCycleLength: string;
@@ -318,6 +319,10 @@ export default function SettingsPage() {
               : "Changes apply to the next prediction."}
           </p>
         </form>
+
+        <div className="mt-8">
+          <TelegramConnectionCard accessToken={accessToken} />
+        </div>
       </div>
     </main>
   );

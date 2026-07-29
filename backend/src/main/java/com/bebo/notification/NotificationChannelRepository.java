@@ -10,4 +10,9 @@ public interface NotificationChannelRepository extends JpaRepository<Notificatio
   Optional<NotificationChannel> findByUserIdAndChannelType(UUID userId, ChannelType channelType);
 
   List<NotificationChannel> findAllByChannelTypeAndEnabledTrue(ChannelType channelType);
+
+  Optional<NotificationChannel> findByUser_IdAndChannelType(UUID userId, ChannelType channelType);
+
+  Optional<NotificationChannel> findByChannelTypeAndConnectTokenHash(
+      ChannelType channelType, String connectTokenHash);
 }

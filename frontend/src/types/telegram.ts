@@ -1,0 +1,14 @@
+export type TelegramConnectionStatus = "DISCONNECTED" | "PENDING" | "CONNECTED";
+
+export type TelegramConnection = {
+  status: TelegramConnectionStatus;
+  connected: boolean;
+  telegramUsername: string | null;
+  connectedAt: string | null;
+};
+
+export type TelegramConnectLink = {
+  status: TelegramConnectionStatus;
+  deepLink: string;
+  expiresAt: string;
+};

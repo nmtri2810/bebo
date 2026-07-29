@@ -1,4 +1,7 @@
 spring:
+  config:
+    import: optional:file:../.env[.properties]
+
   application:
     name: bebo-backend
 
@@ -49,6 +52,8 @@ bebo:
       - ${FRONTEND_URL:http://localhost:3000}
 
   telegram:
+    enabled: ${TELEGRAM_BOT_ENABLED:false}
     bot-token: ${TELEGRAM_BOT_TOKEN:}
     bot-username: ${TELEGRAM_BOT_USERNAME:}
-    webhook-secret: ${TELEGRAM_WEBHOOK_SECRET:}
+    connection-token-ttl: 10m
+    poll-delay-ms: 3000

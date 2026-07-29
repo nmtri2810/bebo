@@ -110,5 +110,24 @@
     "loadError": "Không thể tải cài đặt.",
     "saveError": "Không thể lưu cài đặt.",
     "back": "Quay lại tổng quan"
+  },
+  "Telegram": {
+    "section": "Thông báo",
+    "title": "Telegram",
+    "description": "Kết nối Telegram để nhận lời nhắc chu kỳ riêng tư.",
+    "connected": "Đã kết nối",
+    "connectedAs": "Đã kết nối với @{username}",
+    "notConnected": "Chưa kết nối",
+    "pending": "Đang chờ Telegram",
+    "pendingHint": "Mở Telegram và nhấn Start để hoàn tất kết nối.",
+    "connect": "Kết nối Telegram",
+    "connecting": "Đang tạo liên kết...",
+    "openTelegram": "Mở Telegram",
+    "newLink": "Tạo liên kết mới",
+    "disconnect": "Ngắt kết nối",
+    "disconnecting": "Đang ngắt kết nối...",
+    "loadError": "Không thể tải trạng thái kết nối Telegram.",
+    "connectError": "Không thể tạo liên kết Telegram.",
+    "disconnectError": "Không thể ngắt kết nối Telegram."
   }
 }

@@ -110,5 +110,24 @@
     "loadError": "We couldn't load your settings.",
     "saveError": "We couldn't save your settings.",
     "back": "Back to dashboard"
+  },
+  "Telegram": {
+    "section": "Notifications",
+    "title": "Telegram",
+    "description": "Connect Telegram to receive private cycle reminders.",
+    "connected": "Connected",
+    "connectedAs": "Connected as @{username}",
+    "notConnected": "Not connected",
+    "pending": "Waiting for Telegram",
+    "pendingHint": "Open Telegram and press Start to finish connecting.",
+    "connect": "Connect Telegram",
+    "connecting": "Creating link...",
+    "openTelegram": "Open Telegram",
+    "newLink": "Generate a new link",
+    "disconnect": "Disconnect",
+    "disconnecting": "Disconnecting...",
+    "loadError": "We couldn't load your Telegram connection.",
+    "connectError": "We couldn't create a Telegram connection link.",
+    "disconnectError": "We couldn't disconnect Telegram."
   }
 }
