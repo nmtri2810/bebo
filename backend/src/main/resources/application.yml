@@ -61,3 +61,10 @@ bebo:
   reminder:
     enabled: ${REMINDER_SCHEDULER_ENABLED:true}
     cron: "${REMINDER_SCHEDULER_CRON:0 * * * * *}"
+
+    retry-cron: "${REMINDER_RETRY_CRON:15 * * * * *}"
+    retry-batch-size: ${REMINDER_RETRY_BATCH_SIZE:100}
+
+    first-retry-delay: ${REMINDER_FIRST_RETRY_DELAY:PT5M}
+    second-retry-delay: ${REMINDER_SECOND_RETRY_DELAY:PT15M}
+    third-retry-delay: ${REMINDER_THIRD_RETRY_DELAY:PT30M}

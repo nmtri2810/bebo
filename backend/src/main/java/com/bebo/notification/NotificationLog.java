@@ -18,7 +18,7 @@ import java.time.LocalDate;
 @Table(name = "notification_logs")
 public class NotificationLog extends BaseEntity {
 
-  private static final int MAX_ERROR_LENGTH = 1000;
+  private static final int MAX_ERROR_MESSAGE_LENGTH = 1000;
 
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "user_id", nullable = false)
@@ -49,8 +49,17 @@ public class NotificationLog extends BaseEntity {
   @Column(nullable = false, length = 20)
   private NotificationStatus status;
 
-  @Column(name = "error_message", length = MAX_ERROR_LENGTH)
+  @Column(name = "error_message", length = MAX_ERROR_MESSAGE_LENGTH)
   private String errorMessage;
+
+  @Column(name = "attempt_count", nullable = false)
+  private int attemptCount;
+
+  @Column(name = "last_attempt_at")
+  private Instant lastAttemptAt;
+
+  @Column(name = "next_retry_at")
+  private Instant nextRetryAt;
 
   protected NotificationLog() {}
 
@@ -66,23 +75,51 @@ public class NotificationLog extends BaseEntity {
     log.cycleRecord = cycleRecord;
     log.channelType = channelType;
     log.notificationType = NotificationType.CYCLE_APPROACHING;
+
     log.predictedPeriodDate = predictedPeriodDate;
+
     log.scheduledFor = scheduledFor;
     log.status = NotificationStatus.PENDING;
+    log.attemptCount = 0;
 
     return log;
+  }
+
+  public void startAttempt(Instant attemptedAt) {
+    this.status = NotificationStatus.PENDING;
+    this.attemptCount += 1;
+    this.lastAttemptAt = attemptedAt;
+    this.nextRetryAt = null;
+    this.errorMessage = null;
   }
 
   public void markSent(Instant sentAt) {
     this.status = NotificationStatus.SENT;
     this.sentAt = sentAt;
+    this.nextRetryAt = null;
     this.errorMessage = null;
   }
 
-  public void markFailed(String errorMessage) {
+  public void markFailed(String errorMessage, Instant nextRetryAt) {
     this.status = NotificationStatus.FAILED;
     this.sentAt = null;
+    this.nextRetryAt = nextRetryAt;
+
     this.errorMessage = normalizeErrorMessage(errorMessage);
+  }
+
+  public void stopRetry(String reason) {
+    markFailed(reason, null);
+  }
+
+  public void rescheduleRetry(Instant scheduledFor) {
+    this.status = NotificationStatus.FAILED;
+    this.scheduledFor = scheduledFor;
+    this.nextRetryAt = scheduledFor;
+  }
+
+  public boolean isRetryDue(Instant now) {
+    return status == NotificationStatus.FAILED && nextRetryAt != null && !nextRetryAt.isAfter(now);
   }
 
   private static String normalizeErrorMessage(String errorMessage) {
@@ -92,10 +129,58 @@ public class NotificationLog extends BaseEntity {
 
     String normalized = errorMessage.trim();
 
-    if (normalized.length() <= MAX_ERROR_LENGTH) {
+    if (normalized.length() <= MAX_ERROR_MESSAGE_LENGTH) {
       return normalized;
     }
 
-    return normalized.substring(0, MAX_ERROR_LENGTH);
+    return normalized.substring(0, MAX_ERROR_MESSAGE_LENGTH);
+  }
+
+  public User getUser() {
+    return user;
+  }
+
+  public CycleRecord getCycleRecord() {
+    return cycleRecord;
+  }
+
+  public ChannelType getChannelType() {
+    return channelType;
+  }
+
+  public NotificationType getNotificationType() {
+    return notificationType;
+  }
+
+  public LocalDate getPredictedPeriodDate() {
+    return predictedPeriodDate;
+  }
+
+  public Instant getScheduledFor() {
+    return scheduledFor;
+  }
+
+  public Instant getSentAt() {
+    return sentAt;
+  }
+
+  public NotificationStatus getStatus() {
+    return status;
+  }
+
+  public String getErrorMessage() {
+    return errorMessage;
+  }
+
+  public int getAttemptCount() {
+    return attemptCount;
+  }
+
+  public Instant getLastAttemptAt() {
+    return lastAttemptAt;
+  }
+
+  public Instant getNextRetryAt() {
+    return nextRetryAt;
   }
 }
