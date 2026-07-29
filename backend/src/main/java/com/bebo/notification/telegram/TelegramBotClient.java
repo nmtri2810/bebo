@@ -85,7 +85,7 @@ public class TelegramBotClient {
       return null;
     }
 
-    return node.asText();
+    return node.asString();
   }
 
   public record TelegramIncomingMessage(long updateId, long chatId, String username, String text) {}

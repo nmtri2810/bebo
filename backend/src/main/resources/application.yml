@@ -57,3 +57,7 @@ bebo:
     bot-username: ${TELEGRAM_BOT_USERNAME:}
     connection-token-ttl: 10m
     poll-delay-ms: 3000
+
+  reminder:
+    enabled: ${REMINDER_SCHEDULER_ENABLED:true}
+    cron: "${REMINDER_SCHEDULER_CRON:0 * * * * *}"

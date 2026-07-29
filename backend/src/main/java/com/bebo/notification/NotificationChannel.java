@@ -51,15 +51,12 @@ public class NotificationChannel extends BaseEntity {
 
   protected NotificationChannel() {}
 
-  private NotificationChannel(User user, ChannelType channelType, String externalRecipientId) {
-    this.user = user;
-    this.channelType = channelType;
-    this.externalRecipientId = externalRecipientId;
-    this.enabled = true;
-  }
-
   public static NotificationChannel telegram(User user, String telegramChatId) {
-    return new NotificationChannel(user, ChannelType.TELEGRAM, telegramChatId);
+    NotificationChannel channel = telegram(user);
+
+    channel.connectTelegram(Long.parseLong(telegramChatId), null, Instant.now());
+
+    return channel;
   }
 
   public static NotificationChannel telegram(User user) {
@@ -67,13 +64,14 @@ public class NotificationChannel extends BaseEntity {
 
     channel.user = user;
     channel.channelType = ChannelType.TELEGRAM;
-
+    channel.enabled = false;
     channel.connectionStatus = NotificationChannelStatus.DISCONNECTED;
 
     return channel;
   }
 
   public void beginConnection(String tokenHash, Instant expiresAt) {
+    this.enabled = false;
     this.connectionStatus = NotificationChannelStatus.PENDING;
 
     this.connectTokenHash = tokenHash;
@@ -85,6 +83,7 @@ public class NotificationChannel extends BaseEntity {
     this.telegramUsername = username;
     this.externalRecipientId = Long.toString(chatId);
 
+    this.enabled = true;
     this.connectionStatus = NotificationChannelStatus.CONNECTED;
 
     this.connectedAt = connectedAt;
@@ -94,15 +93,14 @@ public class NotificationChannel extends BaseEntity {
   }
 
   public void expireConnection() {
-    this.connectionStatus = NotificationChannelStatus.DISCONNECTED;
-
-    this.connectTokenHash = null;
-    this.connectTokenExpiresAt = null;
+    disconnect();
   }
 
   public void disconnect() {
+    this.enabled = false;
     this.connectionStatus = NotificationChannelStatus.DISCONNECTED;
 
+    this.externalRecipientId = null;
     this.telegramChatId = null;
     this.telegramUsername = null;
     this.connectedAt = null;
@@ -136,8 +134,9 @@ public class NotificationChannel extends BaseEntity {
   }
 
   public void reconnect(String externalRecipientId) {
-    this.externalRecipientId = externalRecipientId;
-    this.enabled = true;
+    long chatId = Long.parseLong(externalRecipientId);
+
+    connectTelegram(chatId, this.telegramUsername, Instant.now());
   }
 
   public void disable() {

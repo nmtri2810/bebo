@@ -18,6 +18,8 @@ import java.time.LocalDate;
 @Table(name = "notification_logs")
 public class NotificationLog extends BaseEntity {
 
+  private static final int MAX_ERROR_LENGTH = 1000;
+
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "user_id", nullable = false)
   private User user;
@@ -47,7 +49,7 @@ public class NotificationLog extends BaseEntity {
   @Column(nullable = false, length = 20)
   private NotificationStatus status;
 
-  @Column(name = "error_message", length = 1000)
+  @Column(name = "error_message", length = MAX_ERROR_LENGTH)
   private String errorMessage;
 
   protected NotificationLog() {}
@@ -71,14 +73,29 @@ public class NotificationLog extends BaseEntity {
     return log;
   }
 
-  public void markSent() {
+  public void markSent(Instant sentAt) {
     this.status = NotificationStatus.SENT;
-    this.sentAt = Instant.now();
+    this.sentAt = sentAt;
     this.errorMessage = null;
   }
 
   public void markFailed(String errorMessage) {
     this.status = NotificationStatus.FAILED;
-    this.errorMessage = errorMessage;
+    this.sentAt = null;
+    this.errorMessage = normalizeErrorMessage(errorMessage);
+  }
+
+  private static String normalizeErrorMessage(String errorMessage) {
+    if (errorMessage == null || errorMessage.isBlank()) {
+      return "Unknown notification error";
+    }
+
+    String normalized = errorMessage.trim();
+
+    if (normalized.length() <= MAX_ERROR_LENGTH) {
+      return normalized;
+    }
+
+    return normalized.substring(0, MAX_ERROR_LENGTH);
   }
 }
