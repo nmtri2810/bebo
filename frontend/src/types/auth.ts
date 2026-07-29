@@ -1,7 +1,11 @@
+export type OnboardingStep = "WELCOME" | "CYCLE" | "REMINDER" | "TELEGRAM" | "COMPLETED";
+
 export type AuthUser = {
   id: string;
   email: string;
   timezone: string;
+  onboardingStep: OnboardingStep;
+  onboardingCompletedAt: string | null;
   status?: string;
   createdAt?: string;
 };
@@ -13,6 +17,8 @@ export type AuthResponse = {
   userId: string;
   email: string;
   timezone: string;
+  onboardingStep: OnboardingStep;
+  onboardingCompletedAt: string | null;
 };
 
 export type LoginRequest = {

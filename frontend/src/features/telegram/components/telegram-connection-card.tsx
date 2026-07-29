@@ -2,16 +2,22 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { Check, ExternalLink, LoaderCircle, Send, Unlink } from "lucide-react";
+import { Check, ExternalLink, LoaderCircle, Send, TestTube2, Unlink } from "lucide-react";
 
 import { useTranslations } from "next-intl";
+
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 
 import { ApiClientError } from "@/lib/api/api-client";
 
-import { beginTelegramConnection, disconnectTelegram, getTelegramConnection } from "@/lib/api/telegram-api";
+import {
+  beginTelegramConnection,
+  disconnectTelegram,
+  getTelegramConnection,
+  sendTelegramTest,
+} from "@/lib/api/telegram-api";
 
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -19,9 +25,18 @@ import type { TelegramConnection } from "@/types/telegram";
 
 type TelegramConnectionCardProps = {
   accessToken: string;
+  showSectionTitle?: boolean;
+  allowDisconnect?: boolean;
+
+  onConnectionChange?: (connection: TelegramConnection) => void;
 };
 
-export function TelegramConnectionCard({ accessToken }: TelegramConnectionCardProps) {
+export function TelegramConnectionCard({
+  accessToken,
+  showSectionTitle = true,
+  allowDisconnect = true,
+  onConnectionChange,
+}: TelegramConnectionCardProps) {
   const router = useRouter();
   const t = useTranslations("Telegram");
 
@@ -37,12 +52,25 @@ export function TelegramConnectionCard({ accessToken }: TelegramConnectionCardPr
 
   const [isDisconnecting, setIsDisconnecting] = useState(false);
 
+  const [isTesting, setIsTesting] = useState(false);
+
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleUnauthorized = useCallback(() => {
     clearSession();
     router.replace("/");
   }, [clearSession, router]);
+
+  const updateConnection = useCallback(
+    (nextConnection: TelegramConnection) => {
+      setConnection(nextConnection);
+
+      onConnectionChange?.(nextConnection);
+    },
+    [onConnectionChange],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -50,7 +78,7 @@ export function TelegramConnectionCard({ accessToken }: TelegramConnectionCardPr
     getTelegramConnection(accessToken)
       .then((result) => {
         if (!cancelled) {
-          setConnection(result);
+          updateConnection(result);
         }
       })
       .catch((error: unknown) => {
@@ -60,6 +88,7 @@ export function TelegramConnectionCard({ accessToken }: TelegramConnectionCardPr
 
         if (error instanceof ApiClientError && error.status === 401) {
           handleUnauthorized();
+
           return;
         }
 
@@ -74,12 +103,8 @@ export function TelegramConnectionCard({ accessToken }: TelegramConnectionCardPr
     return () => {
       cancelled = true;
     };
-  }, [accessToken, handleUnauthorized, t]);
+  }, [accessToken, handleUnauthorized, t, updateConnection]);
 
-  /*
-   * Khi đang PENDING, tự kiểm tra trạng thái
-   * sau mỗi 2 giây.
-   */
   useEffect(() => {
     if (connection?.status !== "PENDING") {
       return;
@@ -88,7 +113,7 @@ export function TelegramConnectionCard({ accessToken }: TelegramConnectionCardPr
     const intervalId = window.setInterval(() => {
       getTelegramConnection(accessToken)
         .then((result) => {
-          setConnection(result);
+          updateConnection(result);
 
           if (result.status === "CONNECTED") {
             setDeepLink(null);
@@ -105,16 +130,17 @@ export function TelegramConnectionCard({ accessToken }: TelegramConnectionCardPr
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [accessToken, connection?.status, handleUnauthorized]);
+  }, [accessToken, connection?.status, handleUnauthorized, updateConnection]);
 
   const handleConnect = async () => {
     setErrorMessage(null);
+    setSuccessMessage(null);
     setIsConnecting(true);
 
     try {
       const result = await beginTelegramConnection(accessToken);
 
-      setConnection({
+      updateConnection({
         status: result.status,
         connected: false,
         telegramUsername: null,
@@ -127,6 +153,7 @@ export function TelegramConnectionCard({ accessToken }: TelegramConnectionCardPr
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 401) {
         handleUnauthorized();
+
         return;
       }
 
@@ -136,14 +163,37 @@ export function TelegramConnectionCard({ accessToken }: TelegramConnectionCardPr
     }
   };
 
+  const handleTest = async () => {
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setIsTesting(true);
+
+    try {
+      await sendTelegramTest(accessToken);
+
+      setSuccessMessage(t("testSent"));
+    } catch (error) {
+      if (error instanceof ApiClientError && error.status === 401) {
+        handleUnauthorized();
+
+        return;
+      }
+
+      setErrorMessage(t("testError"));
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
   const handleDisconnect = async () => {
     setErrorMessage(null);
+    setSuccessMessage(null);
     setIsDisconnecting(true);
 
     try {
       await disconnectTelegram(accessToken);
 
-      setConnection({
+      updateConnection({
         status: "DISCONNECTED",
         connected: false,
         telegramUsername: null,
@@ -154,6 +204,7 @@ export function TelegramConnectionCard({ accessToken }: TelegramConnectionCardPr
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 401) {
         handleUnauthorized();
+
         return;
       }
 
@@ -166,7 +217,7 @@ export function TelegramConnectionCard({ accessToken }: TelegramConnectionCardPr
   if (isLoading) {
     return (
       <section>
-        <SectionTitle title={t("section")} />
+        {showSectionTitle && <SectionTitle title={t("section")} />}
 
         <div className="flex min-h-28 items-center justify-center rounded-[22px] bg-white shadow-[0_5px_20px_rgba(0,0,0,0.05)]">
           <LoaderCircle className="size-5 animate-spin text-[#8e8e93]" />
@@ -179,7 +230,7 @@ export function TelegramConnectionCard({ accessToken }: TelegramConnectionCardPr
 
   return (
     <section>
-      <SectionTitle title={t("section")} />
+      {showSectionTitle && <SectionTitle title={t("section")} />}
 
       <div className="rounded-[22px] bg-white p-5 shadow-[0_5px_20px_rgba(0,0,0,0.05)]">
         <div className="flex items-start gap-4">
@@ -188,12 +239,13 @@ export function TelegramConnectionCard({ accessToken }: TelegramConnectionCardPr
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-[17px] font-semibold text-[#1c1c1e]">{t("title")}</h2>
 
               {status === "CONNECTED" && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#34c759]/10 px-2 py-1 text-[11px] font-semibold text-[#248a3d]">
                   <Check className="size-3" />
+
                   {t("connected")}
                 </span>
               )}
@@ -205,7 +257,7 @@ export function TelegramConnectionCard({ accessToken }: TelegramConnectionCardPr
 
         <div className="mt-5">
           {status === "CONNECTED" && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="rounded-[14px] bg-[#34c759]/10 px-4 py-3 text-sm font-medium text-[#248a3d]">
                 {connection?.telegramUsername
                   ? t("connectedAs", {
@@ -216,17 +268,32 @@ export function TelegramConnectionCard({ accessToken }: TelegramConnectionCardPr
 
               <Button
                 type="button"
-                variant="ghost"
-                disabled={isDisconnecting}
                 onClick={() => {
-                  void handleDisconnect();
+                  void handleTest();
                 }}
-                className="h-11 w-full rounded-[13px] text-[#d70015] hover:bg-[#ff3b30]/10 hover:text-[#d70015]"
+                disabled={isTesting}
+                className="h-11 w-full rounded-[13px] bg-[#229ed9] text-white shadow-none hover:bg-[#1d8fc5]"
               >
-                <Unlink className="size-4" />
+                <TestTube2 className="size-4" />
 
-                {isDisconnecting ? t("disconnecting") : t("disconnect")}
+                {isTesting ? t("testing") : t("sendTest")}
               </Button>
+
+              {allowDisconnect && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={isDisconnecting}
+                  onClick={() => {
+                    void handleDisconnect();
+                  }}
+                  className="h-11 w-full rounded-[13px] text-[#d70015] hover:bg-[#ff3b30]/10 hover:text-[#d70015]"
+                >
+                  <Unlink className="size-4" />
+
+                  {isDisconnecting ? t("disconnecting") : t("disconnect")}
+                </Button>
+              )}
             </div>
           )}
 
@@ -247,6 +314,7 @@ export function TelegramConnectionCard({ accessToken }: TelegramConnectionCardPr
                   className="h-11 w-full rounded-[13px] bg-[#229ed9] text-white hover:bg-[#1d8fc5]"
                 >
                   <ExternalLink className="size-4" />
+
                   {t("openTelegram")}
                 </Button>
               ) : (
@@ -277,6 +345,14 @@ export function TelegramConnectionCard({ accessToken }: TelegramConnectionCardPr
 
               {isConnecting ? t("connecting") : t("connect")}
             </Button>
+          )}
+
+          {successMessage && (
+            <div className="mt-4 flex items-center gap-2 rounded-[14px] bg-[#34c759]/10 px-4 py-3 text-sm font-medium text-[#248a3d]">
+              <Check className="size-4 shrink-0" />
+
+              {successMessage}
+            </div>
           )}
 
           {errorMessage && (

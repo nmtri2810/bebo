@@ -12,3 +12,8 @@ export type TelegramConnectLink = {
   deepLink: string;
   expiresAt: string;
 };
+
+export type TelegramTestResponse = {
+  sent: boolean;
+  sentAt: string;
+};

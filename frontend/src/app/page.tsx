@@ -5,18 +5,24 @@ import { type FormEvent, useEffect, useState } from "react";
 import { HeartPulse, LockKeyhole } from "lucide-react";
 
 import { useTranslations } from "next-intl";
+
 import { useRouter } from "next/navigation";
 
 import { LanguageSwitcher } from "@/components/language-switcher";
+
 import { Button } from "@/components/ui/button";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { Input } from "@/components/ui/input";
+
 import { Label } from "@/components/ui/label";
+
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { login, register } from "@/lib/api/auth-api";
-
 import { ApiClientError } from "@/lib/api/api-client";
+
+import { login, register } from "@/lib/api/auth-api";
 
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -46,9 +52,12 @@ export default function AuthPage() {
 
   const setSession = useAuthStore((state) => state.setSession);
 
+  const user = useAuthStore((state) => state.user);
+
   const [mode, setMode] = useState<AuthMode>("login");
 
   const [email, setEmail] = useState("");
+
   const [password, setPassword] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,10 +65,12 @@ export default function AuthPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (hasHydrated && accessToken) {
-      router.replace("/dashboard");
+    if (!hasHydrated || !accessToken || !user) {
+      return;
     }
-  }, [accessToken, hasHydrated, router]);
+
+    router.replace(user.onboardingStep === "COMPLETED" ? "/dashboard" : "/onboarding");
+  }, [accessToken, hasHydrated, router, user]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -79,6 +90,7 @@ export default function AuthPage() {
           : await register({
               email: normalizedEmail,
               password,
+
               timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Ho_Chi_Minh",
             });
 
@@ -86,9 +98,13 @@ export default function AuthPage() {
         id: response.userId,
         email: response.email,
         timezone: response.timezone,
+
+        onboardingStep: response.onboardingStep,
+
+        onboardingCompletedAt: response.onboardingCompletedAt,
       });
 
-      router.replace(mode === "register" ? "/onboarding" : "/dashboard");
+      router.replace(response.onboardingStep === "COMPLETED" ? "/dashboard" : "/onboarding");
     } catch (error) {
       setErrorMessage(getErrorMessage(error, t("genericError")));
     } finally {
@@ -213,6 +229,7 @@ export default function AuthPage() {
 
               <div className="flex items-center justify-center gap-1.5 pt-1 text-xs text-[#8e8e93]">
                 <LockKeyhole className="size-3.5" />
+
                 <span>{t("privacy")}</span>
               </div>
             </form>

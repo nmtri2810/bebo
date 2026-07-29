@@ -1,29 +1,39 @@
 "use client";
 
+import { useEffect } from "react";
+
 import { HeartPulse } from "lucide-react";
 
 import Link from "next/link";
 
 import { useTranslations } from "next-intl";
 
+import { useRouter } from "next/navigation";
+
 import { AppNavigation } from "@/components/app-navigation";
 
 import { LanguageSwitcher } from "@/components/language-switcher";
 
+import { useAuthStore } from "@/stores/auth-store";
+
 type AppShellProps = {
   children: React.ReactNode;
-
-  /*
-   * Chỉ kiểm soát chiều rộng nội dung trang.
-   *
-   * Header luôn sử dụng max-w-6xl để navigation
-   * không bị ép theo chiều rộng của nội dung.
-   */
   maxWidthClassName?: string;
 };
 
 export function AppShell({ children, maxWidthClassName = "max-w-6xl" }: AppShellProps) {
+  const router = useRouter();
   const t = useTranslations("Navigation");
+
+  const user = useAuthStore((state) => state.user);
+
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
+
+  useEffect(() => {
+    if (hasHydrated && user && user.onboardingStep !== "COMPLETED") {
+      router.replace("/onboarding");
+    }
+  }, [hasHydrated, router, user]);
 
   return (
     <main className="min-h-dvh bg-[#f2f2f7] px-4 py-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:px-6 md:py-7 md:pb-10 lg:px-8">

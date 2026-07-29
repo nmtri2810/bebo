@@ -18,7 +18,11 @@ import { ApiClientError } from "@/lib/api/api-client";
 
 import { getCycleHistory, getCyclePrediction } from "@/lib/api/cycle-api";
 
+import { getCurrentUser } from "@/lib/api/user-api";
+
 import { useAuthStore } from "@/stores/auth-store";
+
+import type { AuthUser } from "@/types/auth";
 
 import type { CyclePrediction, CycleRecord } from "@/types/cycle";
 
@@ -68,15 +72,19 @@ function formatLargeDate(
 }
 
 type DashboardData = {
+  currentUser: AuthUser;
   history: CycleRecord[];
   prediction: CyclePrediction | null;
 };
 
 async function fetchDashboardData(accessToken: string): Promise<DashboardData> {
+  const currentUser = await getCurrentUser(accessToken);
+
   const history = await getCycleHistory(accessToken);
 
   if (history.length === 0) {
     return {
+      currentUser,
       history,
       prediction: null,
     };
@@ -86,6 +94,7 @@ async function fetchDashboardData(accessToken: string): Promise<DashboardData> {
     const prediction = await getCyclePrediction(accessToken);
 
     return {
+      currentUser,
       history,
       prediction,
     };
@@ -95,6 +104,7 @@ async function fetchDashboardData(accessToken: string): Promise<DashboardData> {
     }
 
     return {
+      currentUser,
       history,
       prediction: null,
     };
@@ -111,6 +121,8 @@ export default function DashboardPage() {
   const user = useAuthStore((state) => state.user);
 
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
+
+  const setUser = useAuthStore((state) => state.setUser);
 
   const clearSession = useAuthStore((state) => state.clearSession);
 
@@ -140,14 +152,18 @@ export default function DashboardPage() {
           return;
         }
 
-        if (data.history.length === 0) {
+        setUser(data.currentUser);
+
+        if (data.currentUser.onboardingStep !== "COMPLETED" || data.history.length === 0) {
           router.replace("/onboarding");
 
           return;
         }
 
         setHistory(data.history);
+
         setPrediction(data.prediction);
+
         setErrorMessage(null);
       })
       .catch((error: unknown) => {
@@ -173,7 +189,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, clearSession, hasHydrated, router, t]);
+  }, [accessToken, clearSession, hasHydrated, router, setUser, t]);
 
   const handleSessionExpired = useCallback(() => {
     clearSession();
@@ -188,14 +204,18 @@ export default function DashboardPage() {
     try {
       const data = await fetchDashboardData(accessToken);
 
-      if (data.history.length === 0) {
+      setUser(data.currentUser);
+
+      if (data.currentUser.onboardingStep !== "COMPLETED" || data.history.length === 0) {
         router.replace("/onboarding");
 
         return;
       }
 
       setHistory(data.history);
+
       setPrediction(data.prediction);
+
       setErrorMessage(null);
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 401) {
@@ -209,7 +229,7 @@ export default function DashboardPage() {
 
       throw error;
     }
-  }, [accessToken, clearSession, router, t]);
+  }, [accessToken, clearSession, router, setUser, t]);
 
   if (!hasHydrated || isLoading) {
     return (

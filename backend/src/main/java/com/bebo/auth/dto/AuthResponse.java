@@ -1,5 +1,6 @@
 package com.bebo.auth.dto;
 
+import com.bebo.user.OnboardingStep;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -9,4 +10,6 @@ public record AuthResponse(
     Instant expiresAt,
     UUID userId,
     String email,
-    String timezone) {}
+    String timezone,
+    OnboardingStep onboardingStep,
+    Instant onboardingCompletedAt) {}

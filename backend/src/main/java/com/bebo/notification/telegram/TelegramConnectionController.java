@@ -2,6 +2,7 @@ package com.bebo.notification.telegram;
 
 import com.bebo.notification.telegram.dto.TelegramConnectLinkResponse;
 import com.bebo.notification.telegram.dto.TelegramConnectionResponse;
+import com.bebo.notification.telegram.dto.TelegramTestResponse;
 import com.bebo.security.CurrentUserService;
 import com.bebo.user.User;
 import org.springframework.http.HttpStatus;
@@ -18,13 +19,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class TelegramConnectionController {
 
   private final CurrentUserService currentUserService;
-
   private final TelegramConnectionService telegramConnectionService;
 
   public TelegramConnectionController(
       CurrentUserService currentUserService, TelegramConnectionService telegramConnectionService) {
     this.currentUserService = currentUserService;
-
     this.telegramConnectionService = telegramConnectionService;
   }
 
@@ -40,6 +39,13 @@ public class TelegramConnectionController {
     User user = currentUserService.requireCurrentUser(authentication);
 
     return telegramConnectionService.beginConnection(user);
+  }
+
+  @PostMapping("/test")
+  public TelegramTestResponse sendTestMessage(Authentication authentication) {
+    User user = currentUserService.requireCurrentUser(authentication);
+
+    return telegramConnectionService.sendTestMessage(user);
   }
 
   @DeleteMapping

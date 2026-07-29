@@ -42,8 +42,14 @@ public class CycleSettings extends BaseEntity {
 
   public void update(int defaultCycleLength, int reminderDaysBefore, LocalTime notificationTime) {
     this.defaultCycleLength = defaultCycleLength;
+
     this.reminderDaysBefore = reminderDaysBefore;
+
     this.notificationTime = notificationTime;
+  }
+
+  public void updateDefaultCycleLength(int defaultCycleLength) {
+    this.defaultCycleLength = defaultCycleLength;
   }
 
   public User getUser() {

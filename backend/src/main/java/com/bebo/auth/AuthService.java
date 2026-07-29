@@ -23,8 +23,11 @@ public class AuthService {
   private static final String DEFAULT_TIMEZONE = "Asia/Ho_Chi_Minh";
 
   private final UserRepository userRepository;
+
   private final CycleSettingsRepository cycleSettingsRepository;
+
   private final PasswordEncoder passwordEncoder;
+
   private final JwtService jwtService;
 
   public AuthService(
@@ -33,8 +36,11 @@ public class AuthService {
       PasswordEncoder passwordEncoder,
       JwtService jwtService) {
     this.userRepository = userRepository;
+
     this.cycleSettingsRepository = cycleSettingsRepository;
+
     this.passwordEncoder = passwordEncoder;
+
     this.jwtService = jwtService;
   }
 
@@ -85,7 +91,9 @@ public class AuthService {
         result.expiresAt(),
         user.getId(),
         user.getEmail(),
-        user.getTimezone());
+        user.getTimezone(),
+        user.getOnboardingStep(),
+        user.getOnboardingCompletedAt());
   }
 
   private String resolveTimezone(String requestedTimezone) {

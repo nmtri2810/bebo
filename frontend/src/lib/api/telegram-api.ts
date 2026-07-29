@@ -1,6 +1,6 @@
 import { apiRequest } from "@/lib/api/api-client";
 
-import type { TelegramConnectLink, TelegramConnection } from "@/types/telegram";
+import type { TelegramConnectLink, TelegramConnection, TelegramTestResponse } from "@/types/telegram";
 
 export function getTelegramConnection(accessToken: string): Promise<TelegramConnection> {
   return apiRequest<TelegramConnection>("/api/notification-channels/telegram", {
@@ -11,6 +11,13 @@ export function getTelegramConnection(accessToken: string): Promise<TelegramConn
 
 export function beginTelegramConnection(accessToken: string): Promise<TelegramConnectLink> {
   return apiRequest<TelegramConnectLink>("/api/notification-channels/telegram/connect", {
+    method: "POST",
+    token: accessToken,
+  });
+}
+
+export function sendTelegramTest(accessToken: string): Promise<TelegramTestResponse> {
+  return apiRequest<TelegramTestResponse>("/api/notification-channels/telegram/test", {
     method: "POST",
     token: accessToken,
   });
