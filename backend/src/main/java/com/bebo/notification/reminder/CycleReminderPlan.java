@@ -2,49 +2,54 @@ package com.bebo.notification.reminder;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.time.format.FormatStyle;
-import java.util.Locale;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.Optional;
 import java.util.UUID;
 
 public record CycleReminderPlan(
     UUID latestCycleRecordId,
     LocalDate predictedPeriodDate,
-    LocalDate reminderDate,
-    Instant scheduledFor,
-    int reminderDaysBefore) {
+    LocalDate reminderStartDate,
+    LocalDate reminderEndDate,
+    LocalTime notificationTime) {
 
-  private static final DateTimeFormatter MESSAGE_DATE_FORMATTER =
-      DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).withLocale(Locale.ENGLISH);
+  public Optional<Delivery> createDueDelivery(Instant now, ZoneId userZone) {
+    LocalDate deliveryLocalDate = now.atZone(userZone).toLocalDate();
 
-  public boolean isDueAt(Instant now, ZoneId userZone) {
-    LocalDate localDate = now.atZone(userZone).toLocalDate();
-
-    return localDate.equals(reminderDate) && !now.isBefore(scheduledFor);
-  }
-
-  public String buildMessage() {
-    String reminderDescription;
-
-    if (reminderDaysBefore == 0) {
-      reminderDescription = "The next period is estimated " + "to start today.";
-    } else if (reminderDaysBefore == 1) {
-      reminderDescription = "The next period is estimated " + "to start tomorrow.";
-    } else {
-      reminderDescription =
-          "The next period is estimated " + "to start in " + reminderDaysBefore + " days.";
+    if (!includesDeliveryDate(deliveryLocalDate)) {
+      return Optional.empty();
     }
 
-    return """
-    bebo cycle reminder
+    Instant scheduledFor = scheduledFor(deliveryLocalDate, userZone);
 
-    %s
-    Estimated start: %s
+    if (now.isBefore(scheduledFor)) {
+      return Optional.empty();
+    }
 
-    Predictions are estimates and may change as more cycle data is added.
-    """
-        .formatted(reminderDescription, predictedPeriodDate.format(MESSAGE_DATE_FORMATTER))
-        .strip();
+    int daysRelativeToPrediction =
+        Math.toIntExact(ChronoUnit.DAYS.between(predictedPeriodDate, deliveryLocalDate));
+
+    ReminderStage stage = ReminderStage.fromDaysRelativeToPrediction(daysRelativeToPrediction);
+
+    return Optional.of(
+        new Delivery(deliveryLocalDate, scheduledFor, stage, daysRelativeToPrediction));
   }
+
+  public boolean includesDeliveryDate(LocalDate deliveryLocalDate) {
+    return !deliveryLocalDate.isBefore(reminderStartDate)
+        && !deliveryLocalDate.isAfter(reminderEndDate);
+  }
+
+  public Instant scheduledFor(LocalDate deliveryLocalDate, ZoneId userZone) {
+    return ZonedDateTime.of(deliveryLocalDate, notificationTime, userZone).toInstant();
+  }
+
+  public record Delivery(
+      LocalDate deliveryLocalDate,
+      Instant scheduledFor,
+      ReminderStage stage,
+      int daysRelativeToPrediction) {}
 }

@@ -21,6 +21,7 @@ import com.bebo.user.User;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +35,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 @ExtendWith(MockitoExtension.class)
 class CycleReminderProcessorTest {
 
+  private static final String MESSAGE_BODY = "Daily cycle reminder message";
+
   @Mock private NotificationChannelRepository notificationChannelRepository;
 
   @Mock private NotificationLogRepository notificationLogRepository;
@@ -41,6 +44,8 @@ class CycleReminderProcessorTest {
   @Mock private CycleRecordRepository cycleRecordRepository;
 
   @Mock private CycleReminderPlanService cycleReminderPlanService;
+
+  @Mock private CycleReminderMessageBuilder messageBuilder;
 
   @Mock private NotificationRetryPolicy notificationRetryPolicy;
 
@@ -56,30 +61,45 @@ class CycleReminderProcessorTest {
             notificationLogRepository,
             cycleRecordRepository,
             cycleReminderPlanService,
+            messageBuilder,
             notificationRetryPolicy,
             telegramBotClient);
   }
 
   @Test
-  void processSendsTelegramReminderAndMarksLogSent() {
+  void processSendsDailyTelegramReminderAndMarksLogSent() {
     Instant now = Instant.parse("2026-07-29T08:00:00Z");
+
     UUID channelId = UUID.randomUUID();
+
     UUID cycleRecordId = UUID.randomUUID();
+
     User user = userWithId(UUID.randomUUID());
+
     NotificationChannel channel = connectedTelegramChannel(user);
-    CycleReminderPlan plan = duePlan(cycleRecordId, now);
+
+    CycleReminderPlan plan = dailyPlan(cycleRecordId);
+
     CycleRecord cycleRecord = CycleRecord.create(user, LocalDate.of(2026, 7, 1));
 
     when(notificationChannelRepository.findById(channelId)).thenReturn(Optional.of(channel));
+
     when(cycleReminderPlanService.createPlan(user)).thenReturn(Optional.of(plan));
+
     when(notificationLogRepository
-            .existsByUserIdAndPredictedPeriodDateAndNotificationTypeAndChannelType(
+            .existsByUserIdAndPredictedPeriodDateAndDeliveryLocalDateAndNotificationTypeAndChannelType(
                 user.getId(),
                 plan.predictedPeriodDate(),
+                LocalDate.of(2026, 7, 29),
                 NotificationType.CYCLE_APPROACHING,
                 ChannelType.TELEGRAM))
         .thenReturn(false);
+
     when(cycleRecordRepository.getReferenceById(cycleRecordId)).thenReturn(cycleRecord);
+
+    when(messageBuilder.build(plan.predictedPeriodDate(), ReminderStage.UPCOMING, -3))
+        .thenReturn(MESSAGE_BODY);
+
     when(notificationLogRepository.saveAndFlush(any(NotificationLog.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -88,50 +108,86 @@ class CycleReminderProcessorTest {
     ArgumentCaptor<NotificationLog> logCaptor = ArgumentCaptor.forClass(NotificationLog.class);
 
     verify(notificationLogRepository).saveAndFlush(logCaptor.capture());
-    verify(telegramBotClient).sendMessage(123456789L, plan.buildMessage());
+
+    verify(telegramBotClient).sendMessage(123456789L, MESSAGE_BODY);
 
     NotificationLog notificationLog = logCaptor.getValue();
 
     assertThat(notificationLog.getUser()).isSameAs(user);
+
     assertThat(notificationLog.getCycleRecord()).isSameAs(cycleRecord);
+
     assertThat(notificationLog.getChannelType()).isEqualTo(ChannelType.TELEGRAM);
+
     assertThat(notificationLog.getNotificationType()).isEqualTo(NotificationType.CYCLE_APPROACHING);
+
     assertThat(notificationLog.getPredictedPeriodDate()).isEqualTo(plan.predictedPeriodDate());
-    assertThat(notificationLog.getScheduledFor()).isEqualTo(plan.scheduledFor());
+
+    assertThat(notificationLog.getDeliveryLocalDate()).isEqualTo(LocalDate.of(2026, 7, 29));
+
+    assertThat(notificationLog.getReminderStage()).isEqualTo(ReminderStage.UPCOMING);
+
+    assertThat(notificationLog.getDaysRelativeToPrediction()).isEqualTo(-3);
+
+    assertThat(notificationLog.getMessageBody()).isEqualTo(MESSAGE_BODY);
+
+    assertThat(notificationLog.getScheduledFor()).isEqualTo(now);
+
     assertThat(notificationLog.getStatus()).isEqualTo(NotificationStatus.SENT);
+
     assertThat(notificationLog.getAttemptCount()).isEqualTo(1);
+
     assertThat(notificationLog.getLastAttemptAt()).isEqualTo(now);
+
     assertThat(notificationLog.getSentAt()).isEqualTo(now);
+
     assertThat(notificationLog.getNextRetryAt()).isNull();
+
     assertThat(notificationLog.getErrorMessage()).isNull();
   }
 
   @Test
-  void processMarksLogFailedAndSchedulesRetryWhenTelegramSendFails() {
+  void processMarksDailyLogFailedAndSchedulesRetryWhenTelegramSendFails() {
     Instant now = Instant.parse("2026-07-29T08:00:00Z");
+
     Instant nextRetryAt = now.plus(Duration.ofMinutes(5));
+
     UUID channelId = UUID.randomUUID();
+
     UUID cycleRecordId = UUID.randomUUID();
+
     User user = userWithId(UUID.randomUUID());
+
     NotificationChannel channel = connectedTelegramChannel(user);
-    CycleReminderPlan plan = duePlan(cycleRecordId, now);
+
+    CycleReminderPlan plan = dailyPlan(cycleRecordId);
 
     when(notificationChannelRepository.findById(channelId)).thenReturn(Optional.of(channel));
+
     when(cycleReminderPlanService.createPlan(user)).thenReturn(Optional.of(plan));
+
     when(notificationLogRepository
-            .existsByUserIdAndPredictedPeriodDateAndNotificationTypeAndChannelType(
+            .existsByUserIdAndPredictedPeriodDateAndDeliveryLocalDateAndNotificationTypeAndChannelType(
                 user.getId(),
                 plan.predictedPeriodDate(),
+                LocalDate.of(2026, 7, 29),
                 NotificationType.CYCLE_APPROACHING,
                 ChannelType.TELEGRAM))
         .thenReturn(false);
+
     when(cycleRecordRepository.getReferenceById(cycleRecordId))
         .thenReturn(CycleRecord.create(user, LocalDate.of(2026, 7, 1)));
+
+    when(messageBuilder.build(plan.predictedPeriodDate(), ReminderStage.UPCOMING, -3))
+        .thenReturn(MESSAGE_BODY);
+
     when(notificationLogRepository.saveAndFlush(any(NotificationLog.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
+
     doThrow(new IllegalStateException("Telegram is down"))
         .when(telegramBotClient)
-        .sendMessage(123456789L, plan.buildMessage());
+        .sendMessage(123456789L, MESSAGE_BODY);
+
     when(notificationRetryPolicy.nextRetryAtAfterFailure(1, now))
         .thenReturn(Optional.of(nextRetryAt));
 
@@ -144,40 +200,49 @@ class CycleReminderProcessorTest {
     NotificationLog notificationLog = logCaptor.getValue();
 
     assertThat(notificationLog.getStatus()).isEqualTo(NotificationStatus.FAILED);
+
     assertThat(notificationLog.getAttemptCount()).isEqualTo(1);
+
     assertThat(notificationLog.getLastAttemptAt()).isEqualTo(now);
+
     assertThat(notificationLog.getSentAt()).isNull();
+
     assertThat(notificationLog.getNextRetryAt()).isEqualTo(nextRetryAt);
+
     assertThat(notificationLog.getErrorMessage())
         .isEqualTo("IllegalStateException: Telegram is down");
   }
 
   @Test
-  void processDoesNotSendWhenReminderIsNotDue() {
+  void processDoesNotSendBeforeDailyNotificationTime() {
     Instant now = Instant.parse("2026-07-29T07:59:00Z");
+
     UUID channelId = UUID.randomUUID();
+
     User user = userWithId(UUID.randomUUID());
+
     NotificationChannel channel = connectedTelegramChannel(user);
-    CycleReminderPlan plan = duePlan(UUID.randomUUID(), now.plus(Duration.ofMinutes(1)));
+
+    CycleReminderPlan plan = dailyPlan(UUID.randomUUID());
 
     when(notificationChannelRepository.findById(channelId)).thenReturn(Optional.of(channel));
+
     when(cycleReminderPlanService.createPlan(user)).thenReturn(Optional.of(plan));
 
     processor.process(channelId, now);
 
     verify(notificationLogRepository, never()).saveAndFlush(any(NotificationLog.class));
+
     verify(telegramBotClient, never()).sendMessage(any(Long.class), any(String.class));
   }
 
-  private CycleReminderPlan duePlan(UUID cycleRecordId, Instant scheduledFor) {
-    LocalDate predictedPeriodDate = LocalDate.of(2026, 8, 1);
-
+  private CycleReminderPlan dailyPlan(UUID cycleRecordId) {
     return new CycleReminderPlan(
         cycleRecordId,
-        predictedPeriodDate,
+        LocalDate.of(2026, 8, 1),
         LocalDate.of(2026, 7, 29),
-        scheduledFor,
-        3);
+        LocalDate.of(2026, 8, 15),
+        LocalTime.of(8, 0));
   }
 
   private NotificationChannel connectedTelegramChannel(User user) {

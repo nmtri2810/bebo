@@ -2,6 +2,7 @@ package com.bebo.notification;
 
 import com.bebo.common.model.BaseEntity;
 import com.bebo.cycle.CycleRecord;
+import com.bebo.notification.reminder.ReminderStage;
 import com.bebo.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -39,6 +40,19 @@ public class NotificationLog extends BaseEntity {
   @Column(name = "predicted_period_date", nullable = false)
   private LocalDate predictedPeriodDate;
 
+  @Column(name = "delivery_local_date", nullable = false)
+  private LocalDate deliveryLocalDate;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "reminder_stage", nullable = false, length = 30)
+  private ReminderStage reminderStage;
+
+  @Column(name = "days_relative_to_prediction", nullable = false)
+  private int daysRelativeToPrediction;
+
+  @Column(name = "message_body", nullable = false, columnDefinition = "TEXT")
+  private String messageBody;
+
   @Column(name = "scheduled_for", nullable = false)
   private Instant scheduledFor;
 
@@ -68,18 +82,33 @@ public class NotificationLog extends BaseEntity {
       CycleRecord cycleRecord,
       ChannelType channelType,
       LocalDate predictedPeriodDate,
+      LocalDate deliveryLocalDate,
+      ReminderStage reminderStage,
+      int daysRelativeToPrediction,
+      String messageBody,
       Instant scheduledFor) {
     NotificationLog log = new NotificationLog();
 
     log.user = user;
     log.cycleRecord = cycleRecord;
     log.channelType = channelType;
+
     log.notificationType = NotificationType.CYCLE_APPROACHING;
 
     log.predictedPeriodDate = predictedPeriodDate;
 
+    log.deliveryLocalDate = deliveryLocalDate;
+
+    log.reminderStage = reminderStage;
+
+    log.daysRelativeToPrediction = daysRelativeToPrediction;
+
+    log.messageBody = messageBody;
+
     log.scheduledFor = scheduledFor;
+
     log.status = NotificationStatus.PENDING;
+
     log.attemptCount = 0;
 
     return log;
@@ -87,14 +116,18 @@ public class NotificationLog extends BaseEntity {
 
   public void startAttempt(Instant attemptedAt) {
     this.status = NotificationStatus.PENDING;
+
     this.attemptCount += 1;
+
     this.lastAttemptAt = attemptedAt;
+
     this.nextRetryAt = null;
     this.errorMessage = null;
   }
 
   public void markSent(Instant sentAt) {
     this.status = NotificationStatus.SENT;
+
     this.sentAt = sentAt;
     this.nextRetryAt = null;
     this.errorMessage = null;
@@ -102,7 +135,9 @@ public class NotificationLog extends BaseEntity {
 
   public void markFailed(String errorMessage, Instant nextRetryAt) {
     this.status = NotificationStatus.FAILED;
+
     this.sentAt = null;
+
     this.nextRetryAt = nextRetryAt;
 
     this.errorMessage = normalizeErrorMessage(errorMessage);
@@ -114,7 +149,9 @@ public class NotificationLog extends BaseEntity {
 
   public void rescheduleRetry(Instant scheduledFor) {
     this.status = NotificationStatus.FAILED;
+
     this.scheduledFor = scheduledFor;
+
     this.nextRetryAt = scheduledFor;
   }
 
@@ -154,6 +191,22 @@ public class NotificationLog extends BaseEntity {
 
   public LocalDate getPredictedPeriodDate() {
     return predictedPeriodDate;
+  }
+
+  public LocalDate getDeliveryLocalDate() {
+    return deliveryLocalDate;
+  }
+
+  public ReminderStage getReminderStage() {
+    return reminderStage;
+  }
+
+  public int getDaysRelativeToPrediction() {
+    return daysRelativeToPrediction;
+  }
+
+  public String getMessageBody() {
+    return messageBody;
   }
 
   public Instant getScheduledFor() {

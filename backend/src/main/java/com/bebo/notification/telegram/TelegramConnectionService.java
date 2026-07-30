@@ -108,7 +108,7 @@ public class TelegramConnectionService {
             .findByChannelTypeAndTelegramChatId(ChannelType.TELEGRAM, telegramChatId)
             .orElse(null);
 
-    if (existingOwner != null && !existingOwner.getId().equals(channel.getId())) {
+    if (existingOwner != null && !isSameChannel(existingOwner, channel)) {
       channel.markAlreadyLinked();
 
       return ConnectionAttempt.ALREADY_LINKED;
@@ -177,6 +177,18 @@ public class TelegramConnectionService {
     }
 
     return username.trim();
+  }
+
+  private boolean isSameChannel(NotificationChannel first, NotificationChannel second) {
+    if (first == second) {
+      return true;
+    }
+
+    if (first.getId() == null || second.getId() == null) {
+      return false;
+    }
+
+    return first.getId().equals(second.getId());
   }
 
   public enum ConnectionAttempt {

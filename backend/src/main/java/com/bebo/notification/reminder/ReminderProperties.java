@@ -1,8 +1,12 @@
 package com.bebo.notification.reminder;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.validation.annotation.Validated;
 
+@Validated
 @ConfigurationProperties(prefix = "bebo.reminder")
 public class ReminderProperties {
 
@@ -12,6 +16,7 @@ public class ReminderProperties {
 
   private String retryCron = "15 * * * * *";
 
+  @Min(1)
   private int retryBatchSize = 100;
 
   private Duration firstRetryDelay = Duration.ofMinutes(5);
@@ -19,6 +24,10 @@ public class ReminderProperties {
   private Duration secondRetryDelay = Duration.ofMinutes(15);
 
   private Duration thirdRetryDelay = Duration.ofMinutes(30);
+
+  @Min(0)
+  @Max(60)
+  private int maxOverdueDays = 14;
 
   public boolean isEnabled() {
     return enabled;
@@ -74,5 +83,13 @@ public class ReminderProperties {
 
   public void setThirdRetryDelay(Duration thirdRetryDelay) {
     this.thirdRetryDelay = thirdRetryDelay;
+  }
+
+  public int getMaxOverdueDays() {
+    return maxOverdueDays;
+  }
+
+  public void setMaxOverdueDays(int maxOverdueDays) {
+    this.maxOverdueDays = maxOverdueDays;
   }
 }

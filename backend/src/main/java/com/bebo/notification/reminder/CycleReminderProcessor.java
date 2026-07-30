@@ -30,6 +30,8 @@ public class CycleReminderProcessor {
 
   private final CycleReminderPlanService cycleReminderPlanService;
 
+  private final CycleReminderMessageBuilder messageBuilder;
+
   private final NotificationRetryPolicy notificationRetryPolicy;
 
   private final TelegramBotClient telegramBotClient;
@@ -39,6 +41,7 @@ public class CycleReminderProcessor {
       NotificationLogRepository notificationLogRepository,
       CycleRecordRepository cycleRecordRepository,
       CycleReminderPlanService cycleReminderPlanService,
+      CycleReminderMessageBuilder messageBuilder,
       NotificationRetryPolicy notificationRetryPolicy,
       TelegramBotClient telegramBotClient) {
     this.notificationChannelRepository = notificationChannelRepository;
@@ -48,6 +51,8 @@ public class CycleReminderProcessor {
     this.cycleRecordRepository = cycleRecordRepository;
 
     this.cycleReminderPlanService = cycleReminderPlanService;
+
+    this.messageBuilder = messageBuilder;
 
     this.notificationRetryPolicy = notificationRetryPolicy;
 
@@ -76,15 +81,18 @@ public class CycleReminderProcessor {
 
     ZoneId userZone = ZoneId.of(user.getTimezone());
 
-    if (!plan.isDueAt(now, userZone)) {
+    CycleReminderPlan.Delivery delivery = plan.createDueDelivery(now, userZone).orElse(null);
+
+    if (delivery == null) {
       return;
     }
 
     boolean alreadyProcessed =
         notificationLogRepository
-            .existsByUserIdAndPredictedPeriodDateAndNotificationTypeAndChannelType(
+            .existsByUserIdAndPredictedPeriodDateAndDeliveryLocalDateAndNotificationTypeAndChannelType(
                 user.getId(),
                 plan.predictedPeriodDate(),
+                delivery.deliveryLocalDate(),
                 NotificationType.CYCLE_APPROACHING,
                 ChannelType.TELEGRAM);
 
@@ -94,24 +102,32 @@ public class CycleReminderProcessor {
 
     CycleRecord cycleRecord = cycleRecordRepository.getReferenceById(plan.latestCycleRecordId());
 
+    String messageBody =
+        messageBuilder.build(
+            plan.predictedPeriodDate(), delivery.stage(), delivery.daysRelativeToPrediction());
+
     NotificationLog notificationLog =
         NotificationLog.createPending(
             user,
             cycleRecord,
             ChannelType.TELEGRAM,
             plan.predictedPeriodDate(),
-            plan.scheduledFor());
+            delivery.deliveryLocalDate(),
+            delivery.stage(),
+            delivery.daysRelativeToPrediction(),
+            messageBody,
+            delivery.scheduledFor());
 
     notificationLog.startAttempt(now);
 
     /*
      * Flush trước khi gọi Telegram để
-     * reserve unique deduplication key.
+     * reserve unique daily deduplication key.
      */
     notificationLogRepository.saveAndFlush(notificationLog);
 
     try {
-      telegramBotClient.sendMessage(channel.getTelegramChatId(), plan.buildMessage());
+      telegramBotClient.sendMessage(channel.getTelegramChatId(), messageBody);
 
       notificationLog.markSent(now);
     } catch (RuntimeException exception) {

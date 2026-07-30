@@ -16,9 +16,10 @@ import org.springframework.data.repository.query.Param;
 
 public interface NotificationLogRepository extends JpaRepository<NotificationLog, UUID> {
 
-  boolean existsByUserIdAndPredictedPeriodDateAndNotificationTypeAndChannelType(
+  boolean existsByUserIdAndPredictedPeriodDateAndDeliveryLocalDateAndNotificationTypeAndChannelType(
       UUID userId,
       LocalDate predictedPeriodDate,
+      LocalDate deliveryLocalDate,
       NotificationType notificationType,
       ChannelType channelType);
 
@@ -46,6 +47,7 @@ public interface NotificationLogRepository extends JpaRepository<NotificationLog
       select log
       from NotificationLog log
       join fetch log.user
+      left join fetch log.cycleRecord
       where log.id = :logId
       """)
   Optional<NotificationLog> findByIdForUpdate(@Param("logId") UUID logId);

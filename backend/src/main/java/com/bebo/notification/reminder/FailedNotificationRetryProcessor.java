@@ -59,7 +59,7 @@ public class FailedNotificationRetryProcessor {
 
     if (notificationLog.getChannelType() != ChannelType.TELEGRAM
         || notificationLog.getNotificationType() != NotificationType.CYCLE_APPROACHING) {
-      notificationLog.stopRetry("Retry stopped because " + "notification type is unsupported.");
+      notificationLog.stopRetry("Retry stopped because notification type is unsupported.");
 
       return;
     }
@@ -67,7 +67,7 @@ public class FailedNotificationRetryProcessor {
     User user = notificationLog.getUser();
 
     if (!user.isActive()) {
-      notificationLog.stopRetry("Retry stopped because " + "the user is inactive.");
+      notificationLog.stopRetry("Retry stopped because the user is inactive.");
 
       return;
     }
@@ -78,7 +78,7 @@ public class FailedNotificationRetryProcessor {
             .orElse(null);
 
     if (!isUsableTelegramChannel(channel)) {
-      notificationLog.stopRetry("Retry stopped because Telegram " + "is disconnected or disabled.");
+      notificationLog.stopRetry("Retry stopped because Telegram is disconnected or disabled.");
 
       return;
     }
@@ -86,43 +86,47 @@ public class FailedNotificationRetryProcessor {
     CycleReminderPlan currentPlan = cycleReminderPlanService.createPlan(user).orElse(null);
 
     if (currentPlan == null) {
-      notificationLog.stopRetry("Retry stopped because cycle " + "prediction is unavailable.");
+      notificationLog.stopRetry("Retry stopped because cycle prediction is unavailable.");
+
+      return;
+    }
+
+    if (notificationLog.getCycleRecord() == null
+        || !currentPlan.latestCycleRecordId().equals(notificationLog.getCycleRecord().getId())) {
+      notificationLog.stopRetry("Retry stopped because a newer cycle record exists.");
 
       return;
     }
 
     if (!currentPlan.predictedPeriodDate().equals(notificationLog.getPredictedPeriodDate())) {
-      notificationLog.stopRetry("Retry stopped because the cycle " + "prediction has changed.");
+      notificationLog.stopRetry("Retry stopped because the cycle prediction has changed.");
+
+      return;
+    }
+
+    LocalDate deliveryLocalDate = notificationLog.getDeliveryLocalDate();
+
+    if (!currentPlan.includesDeliveryDate(deliveryLocalDate)) {
+      notificationLog.stopRetry(
+          "Retry stopped because this date is outside the current reminder window.");
 
       return;
     }
 
     ZoneId userZone = ZoneId.of(user.getTimezone());
 
-    LocalDate localDate = now.atZone(userZone).toLocalDate();
+    LocalDate currentLocalDate = now.atZone(userZone).toLocalDate();
 
-    /*
-     * Settings có thể đã thay đổi khiến
-     * reminder date hoặc notification time
-     * chuyển sang tương lai.
-     *
-     * Ta tái sử dụng cùng notification log
-     * vì dedup key vẫn là predicted date cũ.
-     */
-    if (localDate.isBefore(currentPlan.reminderDate())) {
-      notificationLog.rescheduleRetry(currentPlan.scheduledFor());
+    if (currentLocalDate.isAfter(deliveryLocalDate)) {
+      notificationLog.stopRetry("Retry stopped because the daily reminder is stale.");
 
       return;
     }
 
-    if (localDate.isAfter(currentPlan.reminderDate())) {
-      notificationLog.stopRetry("Retry stopped because the " + "reminder date has passed.");
+    Instant currentScheduledFor = currentPlan.scheduledFor(deliveryLocalDate, userZone);
 
-      return;
-    }
-
-    if (now.isBefore(currentPlan.scheduledFor())) {
-      notificationLog.rescheduleRetry(currentPlan.scheduledFor());
+    if (currentLocalDate.isBefore(deliveryLocalDate) || now.isBefore(currentScheduledFor)) {
+      notificationLog.rescheduleRetry(currentScheduledFor);
 
       return;
     }
@@ -130,7 +134,7 @@ public class FailedNotificationRetryProcessor {
     notificationLog.startAttempt(now);
 
     try {
-      telegramBotClient.sendMessage(channel.getTelegramChatId(), currentPlan.buildMessage());
+      telegramBotClient.sendMessage(channel.getTelegramChatId(), notificationLog.getMessageBody());
 
       notificationLog.markSent(now);
     } catch (RuntimeException exception) {

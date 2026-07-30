@@ -68,3 +68,5 @@ bebo:
     first-retry-delay: ${REMINDER_FIRST_RETRY_DELAY:PT5M}
     second-retry-delay: ${REMINDER_SECOND_RETRY_DELAY:PT15M}
     third-retry-delay: ${REMINDER_THIRD_RETRY_DELAY:PT30M}
+
+    max-overdue-days: ${REMINDER_MAX_OVERDUE_DAYS:14}

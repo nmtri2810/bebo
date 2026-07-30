@@ -6,10 +6,7 @@ import com.bebo.cycle.CycleRecordRepository.CycleStartProjection;
 import com.bebo.settings.CycleSettings;
 import com.bebo.settings.CycleSettingsRepository;
 import com.bebo.user.User;
-import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.PageRequest;
@@ -25,12 +22,17 @@ public class CycleReminderPlanService {
 
   private final CycleSettingsRepository cycleSettingsRepository;
 
+  private final ReminderProperties reminderProperties;
+
   public CycleReminderPlanService(
       CycleRecordRepository cycleRecordRepository,
-      CycleSettingsRepository cycleSettingsRepository) {
+      CycleSettingsRepository cycleSettingsRepository,
+      ReminderProperties reminderProperties) {
     this.cycleRecordRepository = cycleRecordRepository;
 
     this.cycleSettingsRepository = cycleSettingsRepository;
+
+    this.reminderProperties = reminderProperties;
   }
 
   @Transactional(readOnly = true)
@@ -60,21 +62,17 @@ public class CycleReminderPlanService {
     LocalDate predictedPeriodDate =
         latestRecord.getStartDate().plusDays(calculation.averageCycleLength());
 
-    LocalDate reminderDate = predictedPeriodDate.minusDays(settings.getReminderDaysBefore());
+    LocalDate reminderStartDate = predictedPeriodDate.minusDays(settings.getReminderDaysBefore());
 
-    ZoneId userZone = ZoneId.of(user.getTimezone());
-
-    ZonedDateTime localScheduledTime =
-        ZonedDateTime.of(reminderDate, settings.getNotificationTime(), userZone);
-
-    Instant scheduledFor = localScheduledTime.toInstant();
+    LocalDate reminderEndDate =
+        predictedPeriodDate.plusDays(reminderProperties.getMaxOverdueDays());
 
     return Optional.of(
         new CycleReminderPlan(
             latestRecord.getId(),
             predictedPeriodDate,
-            reminderDate,
-            scheduledFor,
-            settings.getReminderDaysBefore()));
+            reminderStartDate,
+            reminderEndDate,
+            settings.getNotificationTime()));
   }
 }
