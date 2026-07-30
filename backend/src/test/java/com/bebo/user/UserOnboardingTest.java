@@ -19,6 +19,8 @@ class UserOnboardingTest {
 
     user.advanceOnboardingTo(OnboardingStep.REMINDER);
 
+    user.advanceOnboardingTo(OnboardingStep.CHANNELS);
+
     Instant completedAt = Instant.now();
 
     user.completeOnboarding(completedAt);

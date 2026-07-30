@@ -16,5 +16,8 @@ public record OnboardingStateResponse(
     NotificationChannelStatus telegramStatus,
     boolean telegramConnected,
     String telegramUsername,
+    NotificationChannelStatus discordStatus,
+    boolean discordConnected,
+    String discordUsername,
     LocalDate expectedNextPeriodDate,
     LocalDate reminderDate) {}

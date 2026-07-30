@@ -55,8 +55,17 @@ bebo:
     enabled: ${TELEGRAM_BOT_ENABLED:false}
     bot-token: ${TELEGRAM_BOT_TOKEN:}
     bot-username: ${TELEGRAM_BOT_USERNAME:}
-    connection-token-ttl: 10m
-    poll-delay-ms: 3000
+    connection-token-ttl: ${TELEGRAM_CONNECTION_TOKEN_TTL:PT10M}
+    poll-delay-ms: ${TELEGRAM_POLL_DELAY_MS:3000}
+
+  discord:
+    enabled: ${DISCORD_BOT_ENABLED:false}
+    client-id: ${DISCORD_CLIENT_ID:}
+    client-secret: ${DISCORD_CLIENT_SECRET:}
+    bot-token: ${DISCORD_BOT_TOKEN:}
+    redirect-uri: ${DISCORD_REDIRECT_URI:http://localhost:8080/api/public/notification-channels/discord/callback}
+    frontend-redirect-url: ${DISCORD_FRONTEND_REDIRECT_URL:http://localhost:3000/settings}
+    state-ttl: ${DISCORD_STATE_TTL:PT10M}
 
   reminder:
     enabled: ${REMINDER_SCHEDULER_ENABLED:true}

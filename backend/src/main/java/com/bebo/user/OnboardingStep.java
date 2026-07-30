@@ -4,6 +4,6 @@ public enum OnboardingStep {
   WELCOME,
   CYCLE,
   REMINDER,
-  TELEGRAM,
+  CHANNELS,
   COMPLETED
 }

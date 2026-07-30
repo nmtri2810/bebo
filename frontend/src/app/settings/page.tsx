@@ -1,14 +1,26 @@
 "use client";
 
-import { type FormEvent, useEffect, useState } from "react";
+import { Suspense, type FormEvent, useEffect, useState } from "react";
 
-import { Bell, BellRing, CalendarDays, Check, ChevronRight, Clock3, Globe2, SlidersHorizontal } from "lucide-react";
+import {
+  Bell,
+  BellRing,
+  CalendarDays,
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  CircleAlert,
+  Clock3,
+  Globe2,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 
 import Link from "next/link";
 
 import { useTranslations } from "next-intl";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
 
@@ -16,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+import { DiscordConnectionCard } from "@/features/discord/components/discord-connection-card";
 import { TelegramConnectionCard } from "@/features/telegram/components/telegram-connection-card";
 
 import { ApiClientError } from "@/lib/api/api-client";
@@ -26,12 +39,16 @@ import { useAuthStore } from "@/stores/auth-store";
 
 import type { Settings } from "@/types/settings";
 
+const DISCORD_RETURN_PATH_KEY = "bebo:discord-return-path";
+
 type SettingsForm = {
   defaultCycleLength: string;
   reminderDaysBefore: string;
   notificationTime: string;
   timezone: string;
 };
+
+type DiscordCallbackResult = "connected" | "already_linked" | "expired" | "denied" | "delivery_failed" | "invalid";
 
 function toForm(settings: Settings): SettingsForm {
   return {
@@ -59,8 +76,34 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+function parseDiscordCallbackResult(value: string | null): DiscordCallbackResult | null {
+  switch (value) {
+    case "connected":
+    case "already_linked":
+    case "expired":
+    case "denied":
+    case "delivery_failed":
+    case "invalid":
+      return value;
+
+    default:
+      return null;
+  }
+}
+
 export default function SettingsPage() {
+  return (
+    <Suspense fallback={<SettingsLoadingPage />}>
+      <SettingsPageContent />
+    </Suspense>
+  );
+}
+
+function SettingsPageContent() {
   const router = useRouter();
+
+  const searchParams = useSearchParams();
+
   const t = useTranslations("Settings");
 
   const accessToken = useAuthStore((state) => state.accessToken);
@@ -82,6 +125,28 @@ export default function SettingsPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
+
+  const discordCallbackResult = parseDiscordCallbackResult(searchParams.get("discord"));
+
+  useEffect(() => {
+    if (!discordCallbackResult) {
+      return;
+    }
+
+    const returnPath = window.sessionStorage.getItem(DISCORD_RETURN_PATH_KEY);
+
+    if (!returnPath || returnPath === "/settings") {
+      return;
+    }
+
+    window.sessionStorage.removeItem(DISCORD_RETURN_PATH_KEY);
+
+    const params = new URLSearchParams({
+      discord: discordCallbackResult,
+    });
+
+    router.replace(`${returnPath}?${params.toString()}`);
+  }, [discordCallbackResult, router]);
 
   useEffect(() => {
     if (!hasHydrated) {
@@ -188,11 +253,7 @@ export default function SettingsPage() {
   };
 
   if (!hasHydrated || isLoading) {
-    return (
-      <main className="grid min-h-dvh place-items-center bg-[#f2f2f7]">
-        <p className="text-sm text-[#8e8e93]">{t("loading")}</p>
-      </main>
-    );
+    return <SettingsLoadingPage />;
   }
 
   if (!accessToken || !form) {
@@ -216,6 +277,17 @@ export default function SettingsPage() {
           </p>
         </div>
       </div>
+
+      {discordCallbackResult && (
+        <DiscordCallbackNotice
+          result={discordCallbackResult}
+          onDismiss={() => {
+            router.replace("/settings", {
+              scroll: false,
+            });
+          }}
+        />
+      )}
 
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)]">
         <form className="min-w-0 space-y-7" onSubmit={handleSubmit}>
@@ -314,7 +386,15 @@ export default function SettingsPage() {
         </form>
 
         <aside className="min-w-0 space-y-8">
-          <TelegramConnectionCard accessToken={accessToken} />
+          <section>
+            <SettingsSectionTitle title={t("notificationChannelsSection")} />
+
+            <div className="space-y-4">
+              <TelegramConnectionCard accessToken={accessToken} showSectionTitle={false} />
+
+              <DiscordConnectionCard accessToken={accessToken} showSectionTitle={false} />
+            </div>
+          </section>
 
           <section>
             <SettingsSectionTitle title={t("activitySection")} />
@@ -339,6 +419,70 @@ export default function SettingsPage() {
         </aside>
       </div>
     </AppShell>
+  );
+}
+
+type DiscordCallbackNoticeProps = {
+  result: DiscordCallbackResult;
+  onDismiss: () => void;
+};
+
+function DiscordCallbackNotice({ result, onDismiss }: DiscordCallbackNoticeProps) {
+  const t = useTranslations("Settings");
+
+  const isSuccess = result === "connected";
+
+  const isWarning = result === "expired" || result === "denied";
+
+  const message = {
+    connected: t("discordConnectedNotice"),
+
+    already_linked: t("discordAlreadyLinkedNotice"),
+
+    expired: t("discordExpiredNotice"),
+
+    denied: t("discordDeniedNotice"),
+
+    delivery_failed: t("discordDeliveryFailedNotice"),
+
+    invalid: t("discordInvalidNotice"),
+  }[result];
+
+  const containerClassName = isSuccess
+    ? "mb-7 flex items-start gap-3 rounded-[18px] bg-[#34c759]/10 px-4 py-3.5 text-[#248a3d]"
+    : isWarning
+      ? "mb-7 flex items-start gap-3 rounded-[18px] bg-[#ff9500]/10 px-4 py-3.5 text-[#c93400]"
+      : "mb-7 flex items-start gap-3 rounded-[18px] bg-[#ff3b30]/10 px-4 py-3.5 text-[#d70015]";
+
+  return (
+    <div role="status" className={containerClassName}>
+      {isSuccess ? (
+        <CheckCircle2 className="mt-0.5 size-5 shrink-0" />
+      ) : (
+        <CircleAlert className="mt-0.5 size-5 shrink-0" />
+      )}
+
+      <p className="min-w-0 flex-1 text-sm font-medium leading-5">{message}</p>
+
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label={t("dismissNotice")}
+        className="flex size-7 shrink-0 items-center justify-center rounded-full transition hover:bg-black/5"
+      >
+        <X className="size-4" />
+      </button>
+    </div>
+  );
+}
+
+function SettingsLoadingPage() {
+  const t = useTranslations("Settings");
+
+  return (
+    <main className="grid min-h-dvh place-items-center bg-[#f2f2f7]">
+      <p className="text-sm text-[#8e8e93]">{t("loading")}</p>
+    </main>
   );
 }
 

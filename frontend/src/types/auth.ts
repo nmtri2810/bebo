@@ -1,4 +1,4 @@
-export type OnboardingStep = "WELCOME" | "CYCLE" | "REMINDER" | "TELEGRAM" | "COMPLETED";
+export type OnboardingStep = "WELCOME" | "CYCLE" | "REMINDER" | "CHANNELS" | "COMPLETED";
 
 export type AuthUser = {
   id: string;

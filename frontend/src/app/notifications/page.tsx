@@ -9,6 +9,7 @@ import {
   ChevronRight,
   CircleX,
   Clock3,
+  Gamepad2,
   LoaderCircle,
   RefreshCw,
   Send,
@@ -38,6 +39,7 @@ type NotificationHistoryCopy = {
   failed: string;
   retryScheduled: string;
   telegram: string;
+  discord: string;
   sentAt: string;
   scheduledFor: string;
   nextRetry: string;
@@ -76,6 +78,7 @@ async function fetchHistory(accessToken: string, page: number): Promise<Notifica
 export default function NotificationsPage() {
   const router = useRouter();
   const locale = useLocale();
+
   const t = useTranslations("Notifications");
 
   const accessToken = useAuthStore((state) => state.accessToken);
@@ -197,12 +200,17 @@ export default function NotificationsPage() {
     retryScheduled: t("retryScheduled"),
 
     telegram: t("telegram"),
+
+    discord: t("discord"),
+
     sentAt: t("sentAt"),
 
     scheduledFor: t("scheduledFor"),
 
     nextRetry: t("nextRetry"),
+
     attempts: t("attempts"),
+
     attempt: t("attempt"),
 
     failureDetails: t("failureDetails"),
@@ -312,6 +320,8 @@ function NotificationHistoryCard({ item, copy, locale, timezone }: NotificationH
 
   const hasScheduledRetry = item.status === "FAILED" && item.nextRetryAt !== null;
 
+  const isDiscord = item.channelType === "DISCORD";
+
   return (
     <article className="overflow-hidden rounded-[22px] bg-white shadow-[0_5px_20px_rgba(0,0,0,0.05)]">
       <div className="flex items-start gap-4 p-5">
@@ -345,9 +355,13 @@ function NotificationHistoryCard({ item, copy, locale, timezone }: NotificationH
           </p>
 
           <div className="mt-2 flex items-center gap-1.5 text-[13px] text-[#8e8e93]">
-            <Send className="size-3.5 text-[#229ed9]" />
+            {isDiscord ? (
+              <Gamepad2 className="size-3.5 text-[#5865f2]" />
+            ) : (
+              <Send className="size-3.5 text-[#229ed9]" />
+            )}
 
-            {copy.telegram}
+            {isDiscord ? copy.discord : copy.telegram}
           </div>
         </div>
       </div>

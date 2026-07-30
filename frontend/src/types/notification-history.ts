@@ -1,4 +1,4 @@
-export type NotificationChannelType = "TELEGRAM";
+export type NotificationChannelType = "TELEGRAM" | "DISCORD";
 
 export type NotificationType = "CYCLE_APPROACHING";
 

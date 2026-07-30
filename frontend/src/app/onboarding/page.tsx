@@ -10,6 +10,7 @@ import {
   Check,
   CheckCircle2,
   Clock3,
+  Gamepad2,
   HeartHandshake,
   HeartPulse,
   Send,
@@ -29,6 +30,8 @@ import { Input } from "@/components/ui/input";
 
 import { Label } from "@/components/ui/label";
 
+import { DiscordConnectionCard } from "@/features/discord/components/discord-connection-card";
+
 import { TelegramConnectionCard } from "@/features/telegram/components/telegram-connection-card";
 
 import { ApiClientError } from "@/lib/api/api-client";
@@ -44,6 +47,8 @@ import {
 import { useAuthStore } from "@/stores/auth-store";
 
 import type { OnboardingStep } from "@/types/auth";
+
+import type { DiscordConnection } from "@/types/discord";
 
 import type { OnboardingState } from "@/types/onboarding";
 
@@ -115,6 +120,7 @@ function subtractDays(value: string, days: number): string {
 export default function OnboardingPage() {
   const router = useRouter();
   const locale = useLocale();
+
   const t = useTranslations("Onboarding");
 
   const accessToken = useAuthStore((state) => state.accessToken);
@@ -198,11 +204,8 @@ export default function OnboardingPage() {
           if (currentUser) {
             setUser({
               ...currentUser,
-
               timezone: result.timezone,
-
               onboardingStep: "COMPLETED",
-
               onboardingCompletedAt: result.completedAt,
             });
           }
@@ -323,7 +326,7 @@ export default function OnboardingPage() {
 
       applyState(result, false);
 
-      setVisibleStep("TELEGRAM");
+      setVisibleStep("CHANNELS");
     } catch (error) {
       if (!handleUnauthorized(error)) {
         setErrorMessage(getErrorMessage(error, t("reminderSaveError")));
@@ -341,17 +344,29 @@ export default function OnboardingPage() {
 
       return {
         ...current,
-
         telegramStatus: connection.status,
-
         telegramConnected: connection.connected,
-
         telegramUsername: connection.telegramUsername,
       };
     });
   };
 
-  const handleComplete = async (skipTelegram: boolean) => {
+  const handleDiscordConnectionChange = (connection: DiscordConnection) => {
+    setOnboardingState((current) => {
+      if (!current) {
+        return current;
+      }
+
+      return {
+        ...current,
+        discordStatus: connection.status,
+        discordConnected: connection.connected,
+        discordUsername: connection.discordUsername,
+      };
+    });
+  };
+
+  const handleComplete = async (skipNotificationChannels: boolean) => {
     if (!accessToken) {
       return;
     }
@@ -361,7 +376,7 @@ export default function OnboardingPage() {
 
     try {
       const result = await completeOnboarding(accessToken, {
-        skipTelegram,
+        skipNotificationChannels,
       });
 
       applyState(result, false);
@@ -369,11 +384,8 @@ export default function OnboardingPage() {
       if (user) {
         setUser({
           ...user,
-
           timezone: result.timezone,
-
           onboardingStep: "COMPLETED",
-
           onboardingCompletedAt: result.completedAt,
         });
       }
@@ -437,7 +449,12 @@ export default function OnboardingPage() {
         {showCompletion ? (
           <CompletionStep state={onboardingState} locale={locale} onContinue={() => router.replace("/dashboard")} />
         ) : visibleStep === "WELCOME" ? (
-          <WelcomeStep isSubmitting={isSubmitting} onStart={() => void handleStart()} />
+          <WelcomeStep
+            isSubmitting={isSubmitting}
+            onStart={() => {
+              void handleStart();
+            }}
+          />
         ) : visibleStep === "CYCLE" ? (
           <CycleStep
             form={cycleForm}
@@ -458,14 +475,19 @@ export default function OnboardingPage() {
             onSubmit={handleReminderSubmit}
           />
         ) : (
-          <TelegramStep
+          <ChannelsStep
             accessToken={accessToken}
             state={onboardingState}
             isSubmitting={isSubmitting}
-            onConnectionChange={handleTelegramConnectionChange}
+            onTelegramConnectionChange={handleTelegramConnectionChange}
+            onDiscordConnectionChange={handleDiscordConnectionChange}
             onBack={() => setVisibleStep("REMINDER")}
-            onComplete={() => void handleComplete(false)}
-            onSkip={() => void handleComplete(true)}
+            onComplete={() => {
+              void handleComplete(false);
+            }}
+            onSkip={() => {
+              void handleComplete(true);
+            }}
           />
         )}
       </div>
@@ -490,8 +512,8 @@ function OnboardingProgress({ currentStep }: OnboardingProgressProps) {
       label: t("progressReminder"),
     },
     {
-      id: "TELEGRAM" as const,
-      label: t("progressTelegram"),
+      id: "CHANNELS" as const,
+      label: t("progressChannels"),
     },
   ];
 
@@ -546,19 +568,16 @@ function WelcomeStep({ isSubmitting, onStart }: WelcomeStepProps) {
     {
       icon: CalendarDays,
       title: t("welcomeBenefitCycle"),
-
       description: t("welcomeBenefitCycleHint"),
     },
     {
       icon: BellRing,
       title: t("welcomeBenefitReminder"),
-
       description: t("welcomeBenefitReminderHint"),
     },
     {
       icon: HeartHandshake,
       title: t("welcomeBenefitCare"),
-
       description: t("welcomeBenefitCareHint"),
     },
   ];
@@ -627,7 +646,6 @@ type CycleStepProps = {
   isSubmitting: boolean;
   onChange: (form: CycleForm) => void;
   onBack: () => void;
-
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 };
 
@@ -660,7 +678,6 @@ function CycleStep({ form, today, isSubmitting, onChange, onBack, onSubmit }: Cy
               onChange={(event) =>
                 onChange({
                   ...form,
-
                   startDate: event.target.value,
                 })
               }
@@ -688,7 +705,6 @@ function CycleStep({ form, today, isSubmitting, onChange, onBack, onSubmit }: Cy
               onChange={(event) =>
                 onChange({
                   ...form,
-
                   defaultCycleLength: event.target.value,
                 })
               }
@@ -712,16 +728,11 @@ function CycleStep({ form, today, isSubmitting, onChange, onBack, onSubmit }: Cy
 
 type ReminderStepProps = {
   form: ReminderForm;
-
   expectedNextPeriodDate: string | null;
-
   locale: string;
   isSubmitting: boolean;
-
   onChange: (form: ReminderForm) => void;
-
   onBack: () => void;
-
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 };
 
@@ -765,7 +776,6 @@ function ReminderStep({
                 onChange={(event) =>
                   onChange({
                     ...form,
-
                     reminderDaysBefore: event.target.value,
                   })
                 }
@@ -794,7 +804,6 @@ function ReminderStep({
                 onChange={(event) =>
                   onChange({
                     ...form,
-
                     notificationTime: event.target.value,
                   })
                 }
@@ -817,7 +826,6 @@ function ReminderStep({
             onChange={(event) =>
               onChange({
                 ...form,
-
                 timezone: event.target.value,
               })
             }
@@ -854,48 +862,67 @@ function ReminderStep({
   );
 }
 
-type TelegramStepProps = {
+type ChannelsStepProps = {
   accessToken: string;
   state: OnboardingState;
   isSubmitting: boolean;
 
-  onConnectionChange: (connection: TelegramConnection) => void;
+  onTelegramConnectionChange: (connection: TelegramConnection) => void;
+
+  onDiscordConnectionChange: (connection: DiscordConnection) => void;
 
   onBack: () => void;
   onComplete: () => void;
   onSkip: () => void;
 };
 
-function TelegramStep({
+function ChannelsStep({
   accessToken,
   state,
   isSubmitting,
-  onConnectionChange,
+  onTelegramConnectionChange,
+  onDiscordConnectionChange,
   onBack,
   onComplete,
   onSkip,
-}: TelegramStepProps) {
+}: ChannelsStepProps) {
   const t = useTranslations("Onboarding");
+
+  const hasConnectedChannel = state.telegramConnected || state.discordConnected;
 
   return (
     <StepCard
-      icon={<Send className="size-7 text-white" />}
-      iconClassName="from-[#229ed9] to-[#007aff]"
-      eyebrow={t("telegramEyebrow")}
-      title={t("telegramTitle")}
-      description={t("telegramDescription")}
+      icon={<BellRing className="size-7 text-white" />}
+      iconClassName="from-[#5865f2] to-[#229ed9]"
+      eyebrow={t("channelsEyebrow")}
+      title={t("channelsTitle")}
+      description={t("channelsDescription")}
     >
-      <TelegramConnectionCard
-        accessToken={accessToken}
-        showSectionTitle={false}
-        allowDisconnect={false}
-        onConnectionChange={onConnectionChange}
-      />
+      <div className="rounded-[16px] bg-[#f2f2f7] px-4 py-3 text-sm leading-5 text-[#636366]">
+        {t("channelsChoiceHint")}
+      </div>
+
+      <div className="mt-5 space-y-4">
+        <TelegramConnectionCard
+          accessToken={accessToken}
+          showSectionTitle={false}
+          allowDisconnect={false}
+          onConnectionChange={onTelegramConnectionChange}
+        />
+
+        <DiscordConnectionCard
+          accessToken={accessToken}
+          showSectionTitle={false}
+          allowDisconnect={false}
+          callbackReturnPath="/onboarding"
+          onConnectionChange={onDiscordConnectionChange}
+        />
+      </div>
 
       <div className="mt-5 rounded-[16px] bg-[#f2f2f7] px-4 py-3 text-xs leading-5 text-[#636366]">
         <ShieldCheck className="mr-2 inline size-4 text-[#34c759]" />
 
-        {t("telegramPrivacy")}
+        {t("channelsPrivacy")}
       </div>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-[auto_1fr]">
@@ -911,7 +938,7 @@ function TelegramStep({
           {t("back")}
         </Button>
 
-        {state.telegramConnected ? (
+        {hasConnectedChannel ? (
           <Button
             type="button"
             onClick={onComplete}
@@ -930,12 +957,14 @@ function TelegramStep({
             disabled={isSubmitting}
             className="h-12 rounded-[14px] text-[#007aff] hover:bg-[#007aff]/8 hover:text-[#007aff]"
           >
-            {isSubmitting ? t("saving") : t("skipTelegram")}
+            {isSubmitting ? t("saving") : t("skipChannels")}
           </Button>
         )}
       </div>
 
-      {!state.telegramConnected && <p className="mt-3 text-center text-xs leading-5 text-[#8e8e93]">{t("skipHint")}</p>}
+      {!hasConnectedChannel && (
+        <p className="mt-3 text-center text-xs leading-5 text-[#8e8e93]">{t("skipChannelsHint")}</p>
+      )}
     </StepCard>
   );
 }
@@ -995,6 +1024,14 @@ function CompletionStep({ state, locale, onContinue }: CompletionStepProps) {
                   : t("connected")
                 : t("notConnected")
             }
+          />
+
+          <div className="ml-14 border-t border-black/6" />
+
+          <SummaryRow
+            icon={<Gamepad2 className="size-5 text-[#5865f2]" />}
+            label={t("completeDiscord")}
+            value={state.discordConnected ? (state.discordUsername ?? t("connected")) : t("notConnected")}
           />
         </div>
 

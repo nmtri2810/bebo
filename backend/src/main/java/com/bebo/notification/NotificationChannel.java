@@ -27,6 +27,9 @@ public class NotificationChannel extends BaseEntity {
   @Column(name = "external_recipient_id", length = 255)
   private String externalRecipientId;
 
+  @Column(name = "external_username", length = 100)
+  private String externalUsername;
+
   @Column(nullable = false)
   private boolean enabled;
 
@@ -60,10 +63,18 @@ public class NotificationChannel extends BaseEntity {
   }
 
   public static NotificationChannel telegram(User user) {
+    return create(user, ChannelType.TELEGRAM);
+  }
+
+  public static NotificationChannel discord(User user) {
+    return create(user, ChannelType.DISCORD);
+  }
+
+  private static NotificationChannel create(User user, ChannelType channelType) {
     NotificationChannel channel = new NotificationChannel();
 
     channel.user = user;
-    channel.channelType = ChannelType.TELEGRAM;
+    channel.channelType = channelType;
     channel.enabled = false;
     channel.connectionStatus = NotificationChannelStatus.DISCONNECTED;
 
@@ -74,13 +85,12 @@ public class NotificationChannel extends BaseEntity {
     this.enabled = false;
     this.connectionStatus = NotificationChannelStatus.PENDING;
 
-    /*
-     * Một lần kết nối mới thay thế trạng thái
-     * Telegram cũ của channel này.
-     */
     this.externalRecipientId = null;
+    this.externalUsername = null;
+
     this.telegramChatId = null;
     this.telegramUsername = null;
+
     this.connectedAt = null;
 
     this.connectTokenHash = tokenHash;
@@ -88,10 +98,28 @@ public class NotificationChannel extends BaseEntity {
   }
 
   public void connectTelegram(long chatId, String username, Instant connectedAt) {
-    this.telegramChatId = chatId;
-    this.telegramUsername = username;
     this.externalRecipientId = Long.toString(chatId);
 
+    this.externalUsername = normalizeNullable(username);
+
+    this.telegramChatId = chatId;
+    this.telegramUsername = normalizeNullable(username);
+
+    markConnected(connectedAt);
+  }
+
+  public void connectDiscord(String discordUserId, String username, Instant connectedAt) {
+    this.externalRecipientId = requireText(discordUserId, "Discord user ID");
+
+    this.externalUsername = normalizeNullable(username);
+
+    this.telegramChatId = null;
+    this.telegramUsername = null;
+
+    markConnected(connectedAt);
+  }
+
+  private void markConnected(Instant connectedAt) {
     this.enabled = true;
     this.connectionStatus = NotificationChannelStatus.CONNECTED;
 
@@ -105,20 +133,8 @@ public class NotificationChannel extends BaseEntity {
     this.enabled = false;
     this.connectionStatus = NotificationChannelStatus.ALREADY_LINKED;
 
-    /*
-     * Không lưu Telegram chat ID vào account thứ hai,
-     * tránh vi phạm unique constraint.
-     */
-    this.externalRecipientId = null;
-    this.telegramChatId = null;
-    this.telegramUsername = null;
-    this.connectedAt = null;
-
-    /*
-     * Token đã được sử dụng và không thể dùng lại.
-     */
-    this.connectTokenHash = null;
-    this.connectTokenExpiresAt = null;
+    clearExternalIdentity();
+    clearConnectionToken();
   }
 
   public void expireConnection() {
@@ -129,23 +145,53 @@ public class NotificationChannel extends BaseEntity {
     this.enabled = false;
     this.connectionStatus = NotificationChannelStatus.DISCONNECTED;
 
+    clearExternalIdentity();
+    clearConnectionToken();
+  }
+
+  private void clearExternalIdentity() {
     this.externalRecipientId = null;
+    this.externalUsername = null;
+
     this.telegramChatId = null;
     this.telegramUsername = null;
-    this.connectedAt = null;
 
+    this.connectedAt = null;
+  }
+
+  private void clearConnectionToken() {
     this.connectTokenHash = null;
     this.connectTokenExpiresAt = null;
   }
 
   public void reconnect(String externalRecipientId) {
+    if (channelType != ChannelType.TELEGRAM) {
+      throw new IllegalStateException("Reconnect is only supported for Telegram");
+    }
+
     long chatId = Long.parseLong(externalRecipientId);
 
-    connectTelegram(chatId, this.telegramUsername, Instant.now());
+    connectTelegram(chatId, telegramUsername, Instant.now());
   }
 
   public void disable() {
     this.enabled = false;
+  }
+
+  private static String requireText(String value, String fieldName) {
+    if (value == null || value.isBlank()) {
+      throw new IllegalArgumentException(fieldName + " must not be blank");
+    }
+
+    return value.trim();
+  }
+
+  private static String normalizeNullable(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+
+    return value.trim();
   }
 
   public User getUser() {
@@ -158,6 +204,10 @@ public class NotificationChannel extends BaseEntity {
 
   public String getExternalRecipientId() {
     return externalRecipientId;
+  }
+
+  public String getExternalUsername() {
+    return externalUsername;
   }
 
   public boolean isEnabled() {

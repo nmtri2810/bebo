@@ -7,10 +7,10 @@ import {
   BellOff,
   BellRing,
   CalendarDays,
-  CheckCircle2,
   ChevronRight,
   CircleAlert,
   Clock3,
+  Gamepad2,
   HeartPulse,
   RefreshCw,
   Send,
@@ -25,15 +25,21 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 
 import { AddCycleDialog } from "@/features/cycles/components/add-cycle-dialog";
+
 import { ManageCycleDialog } from "@/features/cycles/components/manage-cycle-dialog";
 
 import { ApiClientError } from "@/lib/api/api-client";
 
 import { getCycleHistory, getCyclePrediction } from "@/lib/api/cycle-api";
 
+import { getDiscordConnection } from "@/lib/api/discord-api";
+
 import { getNotificationHistory } from "@/lib/api/notification-history-api";
+
 import { getSettings } from "@/lib/api/settings-api";
+
 import { getTelegramConnection } from "@/lib/api/telegram-api";
+
 import { getCurrentUser } from "@/lib/api/user-api";
 
 import { useAuthStore } from "@/stores/auth-store";
@@ -42,8 +48,12 @@ import type { AuthUser } from "@/types/auth";
 
 import type { CyclePrediction, CycleRecord } from "@/types/cycle";
 
-import type { NotificationHistoryItem } from "@/types/notification-history";
+import type { DiscordConnection } from "@/types/discord";
+
+import type { NotificationChannelType, NotificationHistoryItem } from "@/types/notification-history";
+
 import type { Settings } from "@/types/settings";
+
 import type { TelegramConnection } from "@/types/telegram";
 
 function parseLocalDate(value: string): Date {
@@ -136,6 +146,12 @@ function getSettledValue<T>(result: PromiseSettledResult<T>): T | null {
   return null;
 }
 
+type LatestNotificationMap = {
+  TELEGRAM: NotificationHistoryItem | null;
+
+  DISCORD: NotificationHistoryItem | null;
+};
+
 type DashboardData = {
   currentUser: AuthUser;
   history: CycleRecord[];
@@ -144,8 +160,17 @@ type DashboardData = {
 
   telegramConnection: TelegramConnection | null;
 
-  latestNotification: NotificationHistoryItem | null;
+  discordConnection: DiscordConnection | null;
+
+  latestNotifications: LatestNotificationMap;
 };
+
+function findLatestNotification(
+  items: NotificationHistoryItem[],
+  channelType: NotificationChannelType,
+): NotificationHistoryItem | null {
+  return items.find((item) => item.channelType === channelType) ?? null;
+}
 
 async function fetchDashboardData(accessToken: string): Promise<DashboardData> {
   const [currentUser, history] = await Promise.all([getCurrentUser(accessToken), getCycleHistory(accessToken)]);
@@ -157,22 +182,30 @@ async function fetchDashboardData(accessToken: string): Promise<DashboardData> {
       prediction: null,
       settings: null,
       telegramConnection: null,
-      latestNotification: null,
+      discordConnection: null,
+
+      latestNotifications: {
+        TELEGRAM: null,
+        DISCORD: null,
+      },
     };
   }
 
-  const [predictionResult, settingsResult, telegramResult, notificationHistoryResult] = await Promise.allSettled([
-    getCyclePrediction(accessToken),
+  const [predictionResult, settingsResult, telegramResult, discordResult, notificationHistoryResult] =
+    await Promise.allSettled([
+      getCyclePrediction(accessToken),
 
-    getSettings(accessToken),
+      getSettings(accessToken),
 
-    getTelegramConnection(accessToken),
+      getTelegramConnection(accessToken),
 
-    getNotificationHistory(accessToken, {
-      page: 0,
-      size: 1,
-    }),
-  ]);
+      getDiscordConnection(accessToken),
+
+      getNotificationHistory(accessToken, {
+        page: 0,
+        size: 50,
+      }),
+    ]);
 
   const prediction = getSettledValue(predictionResult);
 
@@ -180,7 +213,11 @@ async function fetchDashboardData(accessToken: string): Promise<DashboardData> {
 
   const telegramConnection = getSettledValue(telegramResult);
 
+  const discordConnection = getSettledValue(discordResult);
+
   const notificationHistory = getSettledValue(notificationHistoryResult);
+
+  const notificationItems = notificationHistory?.items ?? [];
 
   return {
     currentUser,
@@ -188,13 +225,19 @@ async function fetchDashboardData(accessToken: string): Promise<DashboardData> {
     prediction,
     settings,
     telegramConnection,
+    discordConnection,
 
-    latestNotification: notificationHistory?.items[0] ?? null,
+    latestNotifications: {
+      TELEGRAM: findLatestNotification(notificationItems, "TELEGRAM"),
+
+      DISCORD: findLatestNotification(notificationItems, "DISCORD"),
+    },
   };
 }
 
 export default function DashboardPage() {
   const router = useRouter();
+
   const locale = useLocale();
 
   const t = useTranslations("Dashboard");
@@ -217,7 +260,12 @@ export default function DashboardPage() {
 
   const [telegramConnection, setTelegramConnection] = useState<TelegramConnection | null>(null);
 
-  const [latestNotification, setLatestNotification] = useState<NotificationHistoryItem | null>(null);
+  const [discordConnection, setDiscordConnection] = useState<DiscordConnection | null>(null);
+
+  const [latestNotifications, setLatestNotifications] = useState<LatestNotificationMap>({
+    TELEGRAM: null,
+    DISCORD: null,
+  });
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -235,7 +283,9 @@ export default function DashboardPage() {
 
       setTelegramConnection(data.telegramConnection);
 
-      setLatestNotification(data.latestNotification);
+      setDiscordConnection(data.discordConnection);
+
+      setLatestNotifications(data.latestNotifications);
 
       setErrorMessage(null);
     },
@@ -415,7 +465,8 @@ export default function DashboardPage() {
         prediction={prediction}
         settings={settings}
         telegramConnection={telegramConnection}
-        latestNotification={latestNotification}
+        discordConnection={discordConnection}
+        latestNotifications={latestNotifications}
         locale={locale}
       />
 
@@ -483,25 +534,88 @@ export default function DashboardPage() {
 
 type ReminderStatusCardProps = {
   prediction: CyclePrediction | null;
+
   settings: Settings | null;
 
   telegramConnection: TelegramConnection | null;
 
-  latestNotification: NotificationHistoryItem | null;
+  discordConnection: DiscordConnection | null;
+
+  latestNotifications: LatestNotificationMap;
 
   locale: string;
+};
+
+type ChannelConnectionStatus = "UNAVAILABLE" | "DISCONNECTED" | "PENDING" | "CONNECTED" | "ALREADY_LINKED";
+
+type ReminderChannelView = {
+  channelType: NotificationChannelType;
+
+  label: string;
+
+  status: ChannelConnectionStatus;
+
+  connected: boolean;
+
+  username: string | null;
+
+  latestNotification: NotificationHistoryItem | null;
 };
 
 function ReminderStatusCard({
   prediction,
   settings,
   telegramConnection,
-  latestNotification,
+  discordConnection,
+  latestNotifications,
   locale,
 }: ReminderStatusCardProps) {
   const t = useTranslations("Dashboard");
 
   const timezone = settings?.timezone ?? "UTC";
+
+  const channels: ReminderChannelView[] = [
+    {
+      channelType: "TELEGRAM",
+
+      label: t("telegram"),
+
+      status: telegramConnection?.status ?? "UNAVAILABLE",
+
+      connected: telegramConnection?.connected ?? false,
+
+      username: telegramConnection?.telegramUsername ?? null,
+
+      latestNotification: latestNotifications.TELEGRAM,
+    },
+    {
+      channelType: "DISCORD",
+
+      label: t("discord"),
+
+      status: discordConnection?.status ?? "UNAVAILABLE",
+
+      connected: discordConnection?.connected ?? false,
+
+      username: discordConnection?.discordUsername ?? null,
+
+      latestNotification: latestNotifications.DISCORD,
+    },
+  ];
+
+  const availableChannels = channels.filter((channel) => channel.status !== "UNAVAILABLE");
+
+  const connectedChannels = channels.filter((channel) => channel.connected);
+
+  const pendingChannels = channels.filter((channel) => channel.status === "PENDING");
+
+  const failedWithRetry = connectedChannels.find(
+    (channel) => channel.latestNotification?.status === "FAILED" && channel.latestNotification.nextRetryAt,
+  );
+
+  const failedWithoutRetry = connectedChannels.find(
+    (channel) => channel.latestNotification?.status === "FAILED" && !channel.latestNotification.nextRetryAt,
+  );
 
   const nextSchedule =
     prediction && settings
@@ -514,159 +628,102 @@ function ReminderStatusCard({
         ].join(" · ")
       : null;
 
-  if (!telegramConnection) {
-    return (
-      <ReminderCardFrame
-        icon={<Bell className="size-6 text-[#636366]" />}
-        iconClassName="bg-[#8e8e93]/10"
-        badge={t("statusUnavailable")}
-        badgeClassName="bg-[#8e8e93]/10 text-[#636366]"
-        title={t("reminderStatusUnavailable")}
-        description={t("reminderStatusUnavailableDescription")}
-        actionHref="/settings"
-        actionLabel={t("manageReminders")}
-      />
-    );
+  let summaryIcon: ReactNode;
+
+  let summaryIconClassName: string;
+
+  let badge: string;
+
+  let badgeClassName: string;
+
+  let title: string;
+
+  let description: string;
+
+  if (availableChannels.length === 0) {
+    summaryIcon = <Bell className="size-6 text-[#636366]" />;
+
+    summaryIconClassName = "bg-[#8e8e93]/10";
+
+    badge = t("statusUnavailable");
+
+    badgeClassName = "bg-[#8e8e93]/10 text-[#636366]";
+
+    title = t("reminderStatusUnavailable");
+
+    description = t("reminderStatusUnavailableDescription");
+  } else if (connectedChannels.length === 0 && pendingChannels.length > 0) {
+    summaryIcon = <RefreshCw className="size-6 text-[#c93400]" />;
+
+    summaryIconClassName = "bg-[#ff9500]/10";
+
+    badge = t("connectionPending");
+
+    badgeClassName = "bg-[#ff9500]/10 text-[#c93400]";
+
+    title = t("channelsPendingTitle");
+
+    description = t("channelsPendingDescription");
+  } else if (connectedChannels.length === 0) {
+    summaryIcon = <BellOff className="size-6 text-[#d7003a]" />;
+
+    summaryIconClassName = "bg-[#ff2d55]/10";
+
+    badge = t("remindersOffStatus");
+
+    badgeClassName = "bg-[#ff2d55]/10 text-[#d7003a]";
+
+    title = t("remindersOff");
+
+    description = t("remindersOffDescription");
+  } else if (failedWithRetry?.latestNotification?.nextRetryAt) {
+    summaryIcon = <RefreshCw className="size-6 text-[#c93400]" />;
+
+    summaryIconClassName = "bg-[#ff9500]/10";
+
+    badge = t("retryScheduled");
+
+    badgeClassName = "bg-[#ff9500]/10 text-[#c93400]";
+
+    title = t("deliveryFailed");
+
+    description = t("channelRetryingAt", {
+      channel: failedWithRetry.label,
+
+      time: formatInstant(failedWithRetry.latestNotification.nextRetryAt, locale, timezone),
+    });
+  } else if (failedWithoutRetry) {
+    summaryIcon = <CircleAlert className="size-6 text-[#d70015]" />;
+
+    summaryIconClassName = "bg-[#ff3b30]/10";
+
+    badge = t("actionNeeded");
+
+    badgeClassName = "bg-[#ff3b30]/10 text-[#d70015]";
+
+    title = t("deliveryStopped");
+
+    description = t("channelDeliveryStopped", {
+      channel: failedWithoutRetry.label,
+    });
+  } else {
+    summaryIcon = <BellRing className="size-6 text-[#007aff]" />;
+
+    summaryIconClassName = "bg-[#007aff]/10";
+
+    badge = t("active");
+
+    badgeClassName = "bg-[#34c759]/10 text-[#248a3d]";
+
+    title = t("dailyRemindersActive");
+
+    description =
+      connectedChannels.length === 2
+        ? t("dailyRemindersBothChannels")
+        : t("dailyRemindersOneChannel", {
+            channel: connectedChannels[0].label,
+          });
   }
-
-  if (telegramConnection.status === "PENDING") {
-    return (
-      <ReminderCardFrame
-        icon={<RefreshCw className="size-6 text-[#c93400]" />}
-        iconClassName="bg-[#ff9500]/10"
-        badge={t("connectionPending")}
-        badgeClassName="bg-[#ff9500]/10 text-[#c93400]"
-        title={t("telegramPending")}
-        description={t("telegramPendingDescription")}
-        actionHref="/settings"
-        actionLabel={t("finishTelegramConnection")}
-      />
-    );
-  }
-
-  if (!telegramConnection.connected) {
-    return (
-      <ReminderCardFrame
-        icon={<BellOff className="size-6 text-[#d7003a]" />}
-        iconClassName="bg-[#ff2d55]/10"
-        badge={t("remindersOffStatus")}
-        badgeClassName="bg-[#ff2d55]/10 text-[#d7003a]"
-        title={t("remindersOff")}
-        description={t("remindersOffDescription")}
-        actionHref="/settings"
-        actionLabel={t("connectTelegram")}
-      />
-    );
-  }
-
-  if (latestNotification?.status === "FAILED" && latestNotification.nextRetryAt) {
-    return (
-      <ReminderCardFrame
-        icon={<RefreshCw className="size-6 text-[#c93400]" />}
-        iconClassName="bg-[#ff9500]/10"
-        badge={t("retryScheduled")}
-        badgeClassName="bg-[#ff9500]/10 text-[#c93400]"
-        title={t("deliveryFailed")}
-        description={t("retryingAt", {
-          time: formatInstant(latestNotification.nextRetryAt, locale, timezone),
-        })}
-        detailLabel={t("deliveryAttempts")}
-        detailValue={t("attemptCount", {
-          count: latestNotification.attemptCount,
-        })}
-        actionHref="/notifications"
-        actionLabel={t("viewDetails")}
-      />
-    );
-  }
-
-  if (latestNotification?.status === "FAILED") {
-    return (
-      <ReminderCardFrame
-        icon={<CircleAlert className="size-6 text-[#d70015]" />}
-        iconClassName="bg-[#ff3b30]/10"
-        badge={t("actionNeeded")}
-        badgeClassName="bg-[#ff3b30]/10 text-[#d70015]"
-        title={t("deliveryStopped")}
-        description={t("failedAfterAttempts", {
-          count: latestNotification.attemptCount,
-        })}
-        actionHref="/notifications"
-        actionLabel={t("viewDetails")}
-      />
-    );
-  }
-
-  if (latestNotification?.status === "SENT" && latestNotification.sentAt) {
-    return (
-      <ReminderCardFrame
-        icon={<CheckCircle2 className="size-6 text-[#248a3d]" />}
-        iconClassName="bg-[#34c759]/10"
-        badge={t("sent")}
-        badgeClassName="bg-[#34c759]/10 text-[#248a3d]"
-        title={t("latestReminder")}
-        description={t("latestReminderSentAt", {
-          time: formatInstant(latestNotification.sentAt, locale, timezone),
-        })}
-        detailLabel={telegramConnection.telegramUsername ? t("sentTo") : undefined}
-        detailValue={telegramConnection.telegramUsername ? `@${telegramConnection.telegramUsername}` : undefined}
-        actionHref="/notifications"
-        actionLabel={t("viewNotificationHistory")}
-      />
-    );
-  }
-
-  const connectedDescription = telegramConnection.telegramUsername
-    ? t("connectedAs", {
-        username: telegramConnection.telegramUsername,
-      })
-    : t("telegramConnected");
-
-  return (
-    <ReminderCardFrame
-      icon={<BellRing className="size-6 text-[#007aff]" />}
-      iconClassName="bg-[#007aff]/10"
-      badge={t("telegramConnected")}
-      badgeClassName="bg-[#007aff]/10 text-[#0062cc]"
-      title={t("nextReminder")}
-      description={nextSchedule ? t("nextReminderDescription") : t("scheduleUnavailable")}
-      detailLabel={nextSchedule ? t("nextReminderSchedule") : undefined}
-      detailValue={nextSchedule ?? undefined}
-      secondaryText={connectedDescription}
-      actionHref="/settings"
-      actionLabel={t("manageReminderSettings")}
-    />
-  );
-}
-
-type ReminderCardFrameProps = {
-  icon: ReactNode;
-  iconClassName: string;
-  badge: string;
-  badgeClassName: string;
-  title: string;
-  description: string;
-  detailLabel?: string;
-  detailValue?: string;
-  secondaryText?: string;
-  actionHref: string;
-  actionLabel: string;
-};
-
-function ReminderCardFrame({
-  icon,
-  iconClassName,
-  badge,
-  badgeClassName,
-  title,
-  description,
-  detailLabel,
-  detailValue,
-  secondaryText,
-  actionHref,
-  actionLabel,
-}: ReminderCardFrameProps) {
-  const t = useTranslations("Dashboard");
 
   return (
     <section className="mt-5">
@@ -676,8 +733,8 @@ function ReminderCardFrame({
 
       <article className="overflow-hidden rounded-[22px] bg-white shadow-[0_5px_20px_rgba(0,0,0,0.05)]">
         <div className="flex items-start gap-4 p-5">
-          <div className={`flex size-12 shrink-0 items-center justify-center rounded-[15px] ${iconClassName}`}>
-            {icon}
+          <div className={`flex size-12 shrink-0 items-center justify-center rounded-[15px] ${summaryIconClassName}`}>
+            {summaryIcon}
           </div>
 
           <div className="min-w-0 flex-1">
@@ -689,40 +746,172 @@ function ReminderCardFrame({
 
             <p className="mt-1 text-sm leading-5 text-[#8e8e93]">{description}</p>
 
-            {secondaryText && (
-              <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-[#229ed9]">
-                <Send className="size-3.5" />
-
-                <span>{secondaryText}</span>
-              </div>
+            {connectedChannels.length > 0 && (
+              <p className="mt-2 text-xs font-medium text-[#248a3d]">
+                {t("connectedChannels", {
+                  count: connectedChannels.length,
+                })}
+              </p>
             )}
           </div>
         </div>
 
-        {detailLabel && detailValue && (
-          <div className="mx-5 mb-5 flex items-start gap-3 rounded-[16px] bg-[#f2f2f7] px-4 py-3">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-white">
-              <Clock3 className="size-4 text-[#007aff]" />
-            </div>
+        {connectedChannels.length > 0 && nextSchedule && (
+          <div className="mx-5 mb-5 rounded-[16px] bg-[#f2f2f7] px-4 py-3">
+            <div className="flex items-start gap-3">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-white">
+                <Clock3 className="size-4 text-[#007aff]" />
+              </div>
 
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-[#8e8e93]">{detailLabel}</p>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-[#8e8e93]">{t("dailyReminderSchedule")}</p>
 
-              <p className="mt-0.5 text-sm font-semibold leading-5 text-[#1c1c1e]">{detailValue}</p>
+                <p className="mt-0.5 text-sm font-semibold leading-5 text-[#1c1c1e]">{nextSchedule}</p>
+
+                <p className="mt-1 text-xs leading-5 text-[#8e8e93]">{t("dailyReminderContinues")}</p>
+              </div>
             </div>
           </div>
         )}
 
-        <Link
-          href={actionHref}
-          className="flex min-h-13 items-center justify-between border-t border-black/6 px-5 text-sm font-semibold text-[#007aff] transition hover:bg-black/3"
-        >
-          <span>{actionLabel}</span>
+        <div className="border-t border-black/6">
+          {channels.map((channel, index) => (
+            <div key={channel.channelType}>
+              {index > 0 && <div className="ml-16 border-t border-black/6" />}
 
-          <ChevronRight className="size-4" />
-        </Link>
+              <ReminderChannelRow channel={channel} locale={locale} timezone={timezone} />
+            </div>
+          ))}
+        </div>
+
+        <div className="grid border-t border-black/6 sm:grid-cols-2 sm:divide-x sm:divide-black/6">
+          <Link
+            href="/settings"
+            className="flex min-h-13 items-center justify-between px-5 text-sm font-semibold text-[#007aff] transition hover:bg-black/3"
+          >
+            <span>{t("manageReminderSettings")}</span>
+
+            <ChevronRight className="size-4" />
+          </Link>
+
+          <Link
+            href="/notifications"
+            className="flex min-h-13 items-center justify-between border-t border-black/6 px-5 text-sm font-semibold text-[#5856d6] transition hover:bg-black/3 sm:border-t-0"
+          >
+            <span>{t("viewNotificationHistory")}</span>
+
+            <ChevronRight className="size-4" />
+          </Link>
+        </div>
       </article>
     </section>
+  );
+}
+
+type ReminderChannelRowProps = {
+  channel: ReminderChannelView;
+
+  locale: string;
+  timezone: string;
+};
+
+function ReminderChannelRow({ channel, locale, timezone }: ReminderChannelRowProps) {
+  const t = useTranslations("Dashboard");
+
+  const isTelegram = channel.channelType === "TELEGRAM";
+
+  const notification = channel.latestNotification;
+
+  let badge: string;
+
+  let badgeClassName: string;
+
+  let description: string;
+
+  if (channel.status === "UNAVAILABLE") {
+    badge = t("channelStatusUnavailable");
+
+    badgeClassName = "bg-[#8e8e93]/10 text-[#636366]";
+
+    description = t("channelStatusUnavailableDescription");
+  } else if (channel.status === "PENDING") {
+    badge = t("channelPending");
+
+    badgeClassName = "bg-[#ff9500]/10 text-[#c93400]";
+
+    description = t("channelPendingDescription");
+  } else if (channel.status === "ALREADY_LINKED") {
+    badge = t("channelAlreadyLinked");
+
+    badgeClassName = "bg-[#ff3b30]/10 text-[#d70015]";
+
+    description = t("channelAlreadyLinkedDescription");
+  } else if (!channel.connected) {
+    badge = t("channelDisconnected");
+
+    badgeClassName = "bg-[#8e8e93]/10 text-[#636366]";
+
+    description = t("channelDisconnectedDescription");
+  } else if (notification?.status === "FAILED" && notification.nextRetryAt) {
+    badge = t("channelRetry");
+
+    badgeClassName = "bg-[#ff9500]/10 text-[#c93400]";
+
+    description = t("channelLatestRetryAt", {
+      time: formatInstant(notification.nextRetryAt, locale, timezone),
+    });
+  } else if (notification?.status === "FAILED") {
+    badge = t("channelFailed");
+
+    badgeClassName = "bg-[#ff3b30]/10 text-[#d70015]";
+
+    description = t("channelLatestFailed");
+  } else if (notification?.status === "SENT" && notification.sentAt) {
+    badge = t("channelSent");
+
+    badgeClassName = "bg-[#34c759]/10 text-[#248a3d]";
+
+    description = t("channelLatestSentAt", {
+      time: formatInstant(notification.sentAt, locale, timezone),
+    });
+  } else {
+    badge = t("channelReady");
+
+    badgeClassName = "bg-[#007aff]/10 text-[#0062cc]";
+
+    description = channel.username
+      ? isTelegram
+        ? t("telegramConnectedAs", {
+            username: channel.username,
+          })
+        : t("discordConnectedAs", {
+            username: channel.username,
+          })
+      : t("channelConnected");
+  }
+
+  return (
+    <div className="flex items-start gap-4 px-5 py-4">
+      <div
+        className={
+          isTelegram
+            ? "flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-[#229ed9]/10"
+            : "flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-[#5865f2]/10"
+        }
+      >
+        {isTelegram ? <Send className="size-5 text-[#229ed9]" /> : <Gamepad2 className="size-5 text-[#5865f2]" />}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <h4 className="text-[15px] font-semibold text-[#1c1c1e]">{channel.label}</h4>
+
+          <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${badgeClassName}`}>{badge}</span>
+        </div>
+
+        <p className="mt-1 text-xs leading-5 text-[#8e8e93]">{description}</p>
+      </div>
+    </div>
   );
 }
 

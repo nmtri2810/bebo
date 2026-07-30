@@ -8,6 +8,8 @@ import com.bebo.cycle.CycleService;
 import com.bebo.cycle.dto.CreateCycleRecordRequest;
 import com.bebo.cycle.dto.CyclePredictionResponse;
 import com.bebo.cycle.dto.UpdateCycleRecordRequest;
+import com.bebo.notification.discord.DiscordConnectionService;
+import com.bebo.notification.discord.dto.DiscordConnectionResponse;
 import com.bebo.notification.telegram.TelegramConnectionService;
 import com.bebo.notification.telegram.dto.TelegramConnectionResponse;
 import com.bebo.settings.CycleSettings;
@@ -41,24 +43,23 @@ public class OnboardingService {
 
   private final TelegramConnectionService telegramConnectionService;
 
+  private final DiscordConnectionService discordConnectionService;
+
   public OnboardingService(
       UserRepository userRepository,
       CycleRecordRepository cycleRecordRepository,
       CycleSettingsRepository cycleSettingsRepository,
       CycleService cycleService,
       SettingsService settingsService,
-      TelegramConnectionService telegramConnectionService) {
+      TelegramConnectionService telegramConnectionService,
+      DiscordConnectionService discordConnectionService) {
     this.userRepository = userRepository;
-
     this.cycleRecordRepository = cycleRecordRepository;
-
     this.cycleSettingsRepository = cycleSettingsRepository;
-
     this.cycleService = cycleService;
-
     this.settingsService = settingsService;
-
     this.telegramConnectionService = telegramConnectionService;
+    this.discordConnectionService = discordConnectionService;
   }
 
   @Transactional(readOnly = true)
@@ -128,7 +129,7 @@ public class OnboardingService {
             request.notificationTime(),
             request.timezone()));
 
-    managedUser.advanceOnboardingTo(OnboardingStep.TELEGRAM);
+    managedUser.advanceOnboardingTo(OnboardingStep.CHANNELS);
 
     return buildState(managedUser);
   }
@@ -145,15 +146,20 @@ public class OnboardingService {
         cycleRecordRepository.findAllByUser_IdOrderByStartDateDesc(managedUser.getId()).isEmpty();
 
     if (cycleRecordMissing) {
-      throw new BadRequestException("A cycle record is required " + "before completing onboarding");
+      throw new BadRequestException("A cycle record is required before completing onboarding");
     }
 
-    TelegramConnectionResponse telegramConnection =
-        telegramConnectionService.getStatus(managedUser);
+    TelegramConnectionResponse telegram = telegramConnectionService.getStatus(managedUser);
 
-    if (!request.skipTelegram() && !telegramConnection.connected()) {
+    DiscordConnectionResponse discord = discordConnectionService.getStatus(managedUser);
+
+    boolean hasConnectedChannel = telegram.connected() || discord.connected();
+
+    if (!request.skipNotificationChannels() && !hasConnectedChannel) {
       throw new BadRequestException(
-          "Connect Telegram or choose " + "to skip it before completing onboarding");
+          "Connect at least one notification channel "
+              + "or choose to skip notification channels "
+              + "before completing onboarding");
     }
 
     managedUser.completeOnboarding(Instant.now());
@@ -172,7 +178,9 @@ public class OnboardingService {
     CyclePredictionResponse prediction =
         mostRecentRecord == null ? null : cycleService.getPrediction(user);
 
-    TelegramConnectionResponse telegramConnection = telegramConnectionService.getStatus(user);
+    TelegramConnectionResponse telegram = telegramConnectionService.getStatus(user);
+
+    DiscordConnectionResponse discord = discordConnectionService.getStatus(user);
 
     return new OnboardingStateResponse(
         user.getOnboardingStep(),
@@ -182,9 +190,12 @@ public class OnboardingService {
         settings.getReminderDaysBefore(),
         settings.getNotificationTime().format(TIME_FORMATTER),
         user.getTimezone(),
-        telegramConnection.status(),
-        telegramConnection.connected(),
-        telegramConnection.telegramUsername(),
+        telegram.status(),
+        telegram.connected(),
+        telegram.telegramUsername(),
+        discord.status(),
+        discord.connected(),
+        discord.discordUsername(),
         prediction == null ? null : prediction.expectedNextPeriodDate(),
         prediction == null ? null : prediction.reminderDate());
   }
