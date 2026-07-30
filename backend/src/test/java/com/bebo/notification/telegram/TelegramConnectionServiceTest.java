@@ -77,6 +77,7 @@ class TelegramConnectionServiceTest {
   @Test
   void beginConnectionCreatesPendingChannelAndDeepLink() {
     UUID userId = UUID.randomUUID();
+
     User user = userWithId(userId);
 
     when(channelRepository.findByUser_IdAndChannelType(userId, ChannelType.TELEGRAM))
@@ -109,7 +110,8 @@ class TelegramConnectionServiceTest {
 
     assertThat(response.status()).isEqualTo(NotificationChannelStatus.PENDING);
 
-    assertThat(response.deepLink()).isEqualTo("https://t.me/bebo_cycle_bot?start=raw-token_123");
+    assertThat(response.deepLink())
+        .isEqualTo("https://t.me/bebo_cycle_bot" + "?start=raw-token_123");
 
     assertThat(response.expiresAt()).isEqualTo(savedChannel.getConnectTokenExpiresAt());
   }
@@ -134,6 +136,9 @@ class TelegramConnectionServiceTest {
     when(channelRepository.findByChannelTypeAndConnectTokenHash(ChannelType.TELEGRAM, "token-hash"))
         .thenReturn(Optional.of(channel));
 
+    when(channelRepository.findByChannelTypeAndTelegramChatId(ChannelType.TELEGRAM, 123456789L))
+        .thenReturn(Optional.empty());
+
     ConnectionAttempt result = service.completeConnection("raw-token", 123456789L, " bebo_user ");
 
     assertThat(result).isEqualTo(ConnectionAttempt.CONNECTED);
@@ -149,6 +154,42 @@ class TelegramConnectionServiceTest {
     assertThat(channel.getConnectTokenHash()).isNull();
 
     assertThat(channel.getConnectTokenExpiresAt()).isNull();
+  }
+
+  @Test
+  void completeConnectionReturnsAlreadyLinkedWhenChatBelongsToAnotherUser() {
+    NotificationChannel pendingChannel =
+        NotificationChannel.telegram(userWithId(UUID.randomUUID()));
+
+    pendingChannel.beginConnection("token-hash", Instant.now().plus(Duration.ofMinutes(1)));
+
+    NotificationChannel existingOwner = NotificationChannel.telegram(userWithId(UUID.randomUUID()));
+
+    existingOwner.connectTelegram(123456789L, "existing_user", Instant.now());
+
+    when(tokenService.hash("raw-token")).thenReturn("token-hash");
+
+    when(channelRepository.findByChannelTypeAndConnectTokenHash(ChannelType.TELEGRAM, "token-hash"))
+        .thenReturn(Optional.of(pendingChannel));
+
+    when(channelRepository.findByChannelTypeAndTelegramChatId(ChannelType.TELEGRAM, 123456789L))
+        .thenReturn(Optional.of(existingOwner));
+
+    ConnectionAttempt result =
+        service.completeConnection("raw-token", 123456789L, "same_telegram_user");
+
+    assertThat(result).isEqualTo(ConnectionAttempt.ALREADY_LINKED);
+
+    assertThat(pendingChannel.getConnectionStatus())
+        .isEqualTo(NotificationChannelStatus.ALREADY_LINKED);
+
+    assertThat(pendingChannel.isEnabled()).isFalse();
+
+    assertThat(pendingChannel.getTelegramChatId()).isNull();
+
+    assertThat(pendingChannel.getConnectTokenHash()).isNull();
+
+    assertThat(pendingChannel.getConnectTokenExpiresAt()).isNull();
   }
 
   @Test
@@ -176,6 +217,7 @@ class TelegramConnectionServiceTest {
   @Test
   void sendTestMessageUsesConnectedTelegramChat() {
     UUID userId = UUID.randomUUID();
+
     User user = userWithId(userId);
 
     NotificationChannel channel = NotificationChannel.telegram(user);
@@ -210,6 +252,7 @@ class TelegramConnectionServiceTest {
   @Test
   void disconnectClearsExistingTelegramChannel() {
     UUID userId = UUID.randomUUID();
+
     User user = userWithId(userId);
 
     NotificationChannel channel = NotificationChannel.telegram(user);

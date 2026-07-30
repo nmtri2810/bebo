@@ -1,4 +1,4 @@
-export type TelegramConnectionStatus = "DISCONNECTED" | "PENDING" | "CONNECTED";
+export type TelegramConnectionStatus = "DISCONNECTED" | "PENDING" | "CONNECTED" | "ALREADY_LINKED";
 
 export type TelegramConnection = {
   status: TelegramConnectionStatus;

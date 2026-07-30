@@ -3,5 +3,6 @@ package com.bebo.notification;
 public enum NotificationChannelStatus {
   DISCONNECTED,
   PENDING,
-  CONNECTED
+  CONNECTED,
+  ALREADY_LINKED,
 }

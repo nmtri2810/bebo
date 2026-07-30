@@ -74,6 +74,15 @@ public class NotificationChannel extends BaseEntity {
     this.enabled = false;
     this.connectionStatus = NotificationChannelStatus.PENDING;
 
+    /*
+     * Một lần kết nối mới thay thế trạng thái
+     * Telegram cũ của channel này.
+     */
+    this.externalRecipientId = null;
+    this.telegramChatId = null;
+    this.telegramUsername = null;
+    this.connectedAt = null;
+
     this.connectTokenHash = tokenHash;
     this.connectTokenExpiresAt = expiresAt;
   }
@@ -88,6 +97,26 @@ public class NotificationChannel extends BaseEntity {
 
     this.connectedAt = connectedAt;
 
+    this.connectTokenHash = null;
+    this.connectTokenExpiresAt = null;
+  }
+
+  public void markAlreadyLinked() {
+    this.enabled = false;
+    this.connectionStatus = NotificationChannelStatus.ALREADY_LINKED;
+
+    /*
+     * Không lưu Telegram chat ID vào account thứ hai,
+     * tránh vi phạm unique constraint.
+     */
+    this.externalRecipientId = null;
+    this.telegramChatId = null;
+    this.telegramUsername = null;
+    this.connectedAt = null;
+
+    /*
+     * Token đã được sử dụng và không thể dùng lại.
+     */
     this.connectTokenHash = null;
     this.connectTokenExpiresAt = null;
   }
@@ -107,30 +136,6 @@ public class NotificationChannel extends BaseEntity {
 
     this.connectTokenHash = null;
     this.connectTokenExpiresAt = null;
-  }
-
-  public NotificationChannelStatus getConnectionStatus() {
-    return connectionStatus;
-  }
-
-  public Long getTelegramChatId() {
-    return telegramChatId;
-  }
-
-  public String getTelegramUsername() {
-    return telegramUsername;
-  }
-
-  public String getConnectTokenHash() {
-    return connectTokenHash;
-  }
-
-  public Instant getConnectTokenExpiresAt() {
-    return connectTokenExpiresAt;
-  }
-
-  public Instant getConnectedAt() {
-    return connectedAt;
   }
 
   public void reconnect(String externalRecipientId) {
@@ -157,5 +162,29 @@ public class NotificationChannel extends BaseEntity {
 
   public boolean isEnabled() {
     return enabled;
+  }
+
+  public NotificationChannelStatus getConnectionStatus() {
+    return connectionStatus;
+  }
+
+  public Long getTelegramChatId() {
+    return telegramChatId;
+  }
+
+  public String getTelegramUsername() {
+    return telegramUsername;
+  }
+
+  public String getConnectTokenHash() {
+    return connectTokenHash;
+  }
+
+  public Instant getConnectTokenExpiresAt() {
+    return connectTokenExpiresAt;
+  }
+
+  public Instant getConnectedAt() {
+    return connectedAt;
   }
 }

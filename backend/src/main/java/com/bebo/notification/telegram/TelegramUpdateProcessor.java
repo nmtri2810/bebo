@@ -19,7 +19,6 @@ public class TelegramUpdateProcessor {
 
   public TelegramUpdateProcessor(
       TelegramConnectionService connectionService, TelegramBotClient telegramBotClient) {
-
     this.connectionService = connectionService;
 
     this.telegramBotClient = telegramBotClient;
@@ -52,15 +51,24 @@ public class TelegramUpdateProcessor {
           telegramBotClient.sendMessage(
               incoming.chatId(), "Telegram is now connected " + "to your bebo account.");
 
+      case ALREADY_LINKED ->
+          telegramBotClient.sendMessage(
+              incoming.chatId(),
+              """
+              This Telegram account is already connected to another bebo account.
+
+              Disconnect Telegram from the other bebo account before trying again.
+              """
+                  .strip());
+
       case EXPIRED ->
           telegramBotClient.sendMessage(
               incoming.chatId(),
-              "This connection link has " + "expired. Generate a " + "new link in bebo.");
+              "This connection link has expired. " + "Generate a new link in bebo.");
 
       case INVALID ->
           telegramBotClient.sendMessage(
-              incoming.chatId(),
-              "This connection link is " + "invalid or has already " + "been used.");
+              incoming.chatId(), "This connection link is invalid " + "or has already been used.");
     }
   }
 }

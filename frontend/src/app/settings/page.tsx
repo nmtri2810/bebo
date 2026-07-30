@@ -2,18 +2,7 @@
 
 import { type FormEvent, useEffect, useState } from "react";
 
-import {
-  Bell,
-  BellRing,
-  CalendarDays,
-  Check,
-  ChevronRight,
-  Clock3,
-  Globe2,
-  LogOut,
-  Mail,
-  SlidersHorizontal,
-} from "lucide-react";
+import { Bell, BellRing, CalendarDays, Check, ChevronRight, Clock3, Globe2, SlidersHorizontal } from "lucide-react";
 
 import Link from "next/link";
 
@@ -198,11 +187,6 @@ export default function SettingsPage() {
     }
   };
 
-  const handleLogout = () => {
-    clearSession();
-    router.replace("/");
-  };
-
   if (!hasHydrated || isLoading) {
     return (
       <main className="grid min-h-dvh place-items-center bg-[#f2f2f7]">
@@ -351,38 +335,6 @@ export default function SettingsPage() {
 
               <ChevronRight className="size-5 shrink-0 text-[#c7c7cc]" />
             </Link>
-          </section>
-
-          <section>
-            <SettingsSectionTitle title={t("accountTitle")} />
-
-            <div className="overflow-hidden rounded-[22px] bg-white shadow-[0_5px_20px_rgba(0,0,0,0.05)]">
-              <div className="flex min-h-16 items-center gap-3 px-5 py-4">
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-[#f2f2f7]">
-                  <Mail className="size-4 text-[#007aff]" />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-[#8e8e93]">{t("email")}</p>
-
-                  <p className="mt-0.5 truncate text-[15px] font-medium text-[#1c1c1e]">{user?.email}</p>
-                </div>
-              </div>
-
-              <div className="ml-17 border-t border-black/6" />
-
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="flex min-h-15 w-full items-center gap-3 px-5 py-4 text-left text-[#d70015] transition hover:bg-[#ff3b30]/6"
-              >
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-[#ff3b30]/10">
-                  <LogOut className="size-4" />
-                </div>
-
-                <span className="text-[15px] font-semibold">{t("signOut")}</span>
-              </button>
-            </div>
           </section>
         </aside>
       </div>

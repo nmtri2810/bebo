@@ -13,6 +13,11 @@
     "notifications": "Notifications",
     "settings": "Settings"
   },
+  "UserMenu": {
+    "accountMenu": "Account menu",
+    "signedInAs": "Signed in as",
+    "signOut": "Sign out"
+  },
   "Auth": {
     "brand": "bebo",
     "tagline": "A little help to care better.",
@@ -140,7 +145,41 @@
     "deleting": "Deleting...",
     "updateError": "We couldn't update this date.",
     "deleteError": "We couldn't delete this record.",
-    "settings": "Settings"
+    "settings": "Settings",
+    "reminderStatus": "Reminder status",
+    "statusUnavailable": "Unavailable",
+    "reminderStatusUnavailable": "Reminder status unavailable",
+    "reminderStatusUnavailableDescription": "We couldn't check your reminder connection right now.",
+    "manageReminders": "Manage reminders",
+    "connectionPending": "Connection pending",
+    "telegramPending": "Finish connecting Telegram",
+    "telegramPendingDescription": "Open Telegram and press Start to activate private reminders.",
+    "finishTelegramConnection": "Finish connection",
+    "remindersOffStatus": "Reminders off",
+    "remindersOff": "Turn on Telegram reminders",
+    "remindersOffDescription": "Connect Telegram so bebo can remind you before the next estimated period.",
+    "connectTelegram": "Connect Telegram",
+    "retryScheduled": "Retry scheduled",
+    "deliveryFailed": "Reminder delivery failed",
+    "retryingAt": "bebo will automatically try again at {time}.",
+    "deliveryAttempts": "Delivery attempts",
+    "attemptCount": "{count, plural, one {# attempt} other {# attempts}}",
+    "viewDetails": "View details",
+    "actionNeeded": "Action needed",
+    "deliveryStopped": "Reminder could not be delivered",
+    "failedAfterAttempts": "{count, plural, one {Telegram delivery stopped after # attempt.} other {Telegram delivery stopped after # attempts.}}",
+    "sent": "Sent",
+    "latestReminder": "Latest reminder",
+    "latestReminderSentAt": "Sent {time}.",
+    "sentTo": "Sent to",
+    "viewNotificationHistory": "View notification history",
+    "telegramConnected": "Telegram connected",
+    "connectedAs": "Connected as @{username}",
+    "nextReminder": "Next reminder",
+    "nextReminderDescription": "bebo will send this reminder privately through Telegram.",
+    "nextReminderSchedule": "Scheduled for",
+    "scheduleUnavailable": "Your reminder schedule is currently unavailable.",
+    "manageReminderSettings": "Manage reminder settings"
   },
   "Notifications": {
     "title": "Notification history",
@@ -215,6 +254,9 @@
     "sendTest": "Send test notification",
     "testing": "Sending test...",
     "testSent": "Test notification sent to Telegram.",
-    "testError": "We couldn't send the test notification."
+    "testError": "We couldn't send the test notification.",
+    "alreadyLinked": "Already linked",
+    "alreadyLinkedTitle": "This Telegram account is already in use",
+    "alreadyLinkedDescription": "It is connected to another bebo account. Sign in to that account and disconnect Telegram before generating a new connection link."
   }
 }

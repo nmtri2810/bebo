@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { Check, ExternalLink, LoaderCircle, Send, TestTube2, Unlink } from "lucide-react";
+import { Check, CircleAlert, ExternalLink, LoaderCircle, RefreshCw, Send, TestTube2, Unlink } from "lucide-react";
 
 import { useTranslations } from "next-intl";
 
@@ -38,6 +38,7 @@ export function TelegramConnectionCard({
   onConnectionChange,
 }: TelegramConnectionCardProps) {
   const router = useRouter();
+
   const t = useTranslations("Telegram");
 
   const clearSession = useAuthStore((state) => state.clearSession);
@@ -115,7 +116,7 @@ export function TelegramConnectionCard({
         .then((result) => {
           updateConnection(result);
 
-          if (result.status === "CONNECTED") {
+          if (result.status === "CONNECTED" || result.status === "ALREADY_LINKED") {
             setDeepLink(null);
             setErrorMessage(null);
           }
@@ -249,6 +250,14 @@ export function TelegramConnectionCard({
                   {t("connected")}
                 </span>
               )}
+
+              {status === "ALREADY_LINKED" && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#ff3b30]/10 px-2 py-1 text-[11px] font-semibold text-[#d70015]">
+                  <CircleAlert className="size-3" />
+
+                  {t("alreadyLinked")}
+                </span>
+              )}
             </div>
 
             <p className="mt-1 text-sm leading-5 text-[#8e8e93]">{t("description")}</p>
@@ -329,6 +338,36 @@ export function TelegramConnectionCard({
                   {t("newLink")}
                 </Button>
               )}
+            </div>
+          )}
+
+          {status === "ALREADY_LINKED" && (
+            <div className="space-y-4">
+              <div className="rounded-[14px] bg-[#ff3b30]/10 px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <CircleAlert className="mt-0.5 size-5 shrink-0 text-[#d70015]" />
+
+                  <div>
+                    <p className="text-sm font-semibold text-[#d70015]">{t("alreadyLinkedTitle")}</p>
+
+                    <p className="mt-1 text-xs leading-5 text-[#636366]">{t("alreadyLinkedDescription")}</p>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  void handleConnect();
+                }}
+                disabled={isConnecting}
+                className="h-11 w-full rounded-[13px] text-[#007aff] hover:bg-[#007aff]/8 hover:text-[#007aff]"
+              >
+                <RefreshCw className="size-4" />
+
+                {isConnecting ? t("connecting") : t("newLink")}
+              </Button>
             </div>
           )}
 

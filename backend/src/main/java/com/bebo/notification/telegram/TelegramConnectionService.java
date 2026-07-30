@@ -27,8 +27,11 @@ public class TelegramConnectionService {
           .strip();
 
   private final NotificationChannelRepository channelRepository;
+
   private final TelegramConnectionTokenService tokenService;
+
   private final TelegramProperties properties;
+
   private final ObjectProvider<TelegramBotClient> telegramBotClientProvider;
 
   public TelegramConnectionService(
@@ -37,8 +40,11 @@ public class TelegramConnectionService {
       TelegramProperties properties,
       ObjectProvider<TelegramBotClient> telegramBotClientProvider) {
     this.channelRepository = channelRepository;
+
     this.tokenService = tokenService;
+
     this.properties = properties;
+
     this.telegramBotClientProvider = telegramBotClientProvider;
   }
 
@@ -97,6 +103,17 @@ public class TelegramConnectionService {
       return ConnectionAttempt.EXPIRED;
     }
 
+    NotificationChannel existingOwner =
+        channelRepository
+            .findByChannelTypeAndTelegramChatId(ChannelType.TELEGRAM, telegramChatId)
+            .orElse(null);
+
+    if (existingOwner != null && !existingOwner.getId().equals(channel.getId())) {
+      channel.markAlreadyLinked();
+
+      return ConnectionAttempt.ALREADY_LINKED;
+    }
+
     channel.connectTelegram(telegramChatId, normalizeUsername(telegramUsername), now);
 
     return ConnectionAttempt.CONNECTED;
@@ -113,7 +130,8 @@ public class TelegramConnectionService {
                     candidate.isEnabled()
                         && candidate.getConnectionStatus() == NotificationChannelStatus.CONNECTED
                         && candidate.getTelegramChatId() != null)
-            .orElseThrow(() -> new BadRequestException("Telegram is not connected for this user"));
+            .orElseThrow(
+                () -> new BadRequestException("Telegram is not connected " + "for this user"));
 
     TelegramBotClient telegramBotClient = telegramBotClientProvider.getIfAvailable();
 
@@ -163,6 +181,7 @@ public class TelegramConnectionService {
 
   public enum ConnectionAttempt {
     CONNECTED,
+    ALREADY_LINKED,
     INVALID,
     EXPIRED
   }

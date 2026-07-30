@@ -18,6 +18,9 @@ public interface NotificationChannelRepository extends JpaRepository<Notificatio
   Optional<NotificationChannel> findByChannelTypeAndConnectTokenHash(
       ChannelType channelType, String connectTokenHash);
 
+  Optional<NotificationChannel> findByChannelTypeAndTelegramChatId(
+      ChannelType channelType, Long telegramChatId);
+
   @Query(
       """
       select channel.id

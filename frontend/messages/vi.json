@@ -13,6 +13,11 @@
     "notifications": "Thông báo",
     "settings": "Cài đặt"
   },
+  "UserMenu": {
+    "accountMenu": "Menu tài khoản",
+    "signedInAs": "Đang đăng nhập bằng",
+    "signOut": "Đăng xuất"
+  },
   "Auth": {
     "brand": "bebo",
     "tagline": "Một chút hỗ trợ để bạn quan tâm tốt hơn.",
@@ -140,7 +145,41 @@
     "deleting": "Đang xóa...",
     "updateError": "Không thể cập nhật ngày này.",
     "deleteError": "Không thể xóa bản ghi.",
-    "settings": "Cài đặt"
+    "settings": "Cài đặt",
+    "reminderStatus": "Trạng thái lời nhắc",
+    "statusUnavailable": "Chưa thể kiểm tra",
+    "reminderStatusUnavailable": "Chưa thể kiểm tra lời nhắc",
+    "reminderStatusUnavailableDescription": "Hiện tại bebo chưa thể kiểm tra kết nối lời nhắc của bạn.",
+    "manageReminders": "Quản lý lời nhắc",
+    "connectionPending": "Đang chờ kết nối",
+    "telegramPending": "Hoàn tất kết nối Telegram",
+    "telegramPendingDescription": "Mở Telegram và nhấn Start để kích hoạt lời nhắc riêng tư.",
+    "finishTelegramConnection": "Hoàn tất kết nối",
+    "remindersOffStatus": "Đang tắt",
+    "remindersOff": "Bật lời nhắc Telegram",
+    "remindersOffDescription": "Kết nối Telegram để bebo có thể nhắc bạn trước kỳ kinh dự kiến tiếp theo.",
+    "connectTelegram": "Kết nối Telegram",
+    "retryScheduled": "Đã lên lịch thử lại",
+    "deliveryFailed": "Gửi lời nhắc thất bại",
+    "retryingAt": "bebo sẽ tự động thử lại lúc {time}.",
+    "deliveryAttempts": "Số lần gửi",
+    "attemptCount": "{count} lần",
+    "viewDetails": "Xem chi tiết",
+    "actionNeeded": "Cần kiểm tra",
+    "deliveryStopped": "Không thể gửi lời nhắc",
+    "failedAfterAttempts": "Telegram vẫn không nhận được lời nhắc sau {count} lần gửi.",
+    "sent": "Đã gửi",
+    "latestReminder": "Lời nhắc gần nhất",
+    "latestReminderSentAt": "Đã gửi lúc {time}.",
+    "sentTo": "Đã gửi tới",
+    "viewNotificationHistory": "Xem lịch sử thông báo",
+    "telegramConnected": "Telegram đã kết nối",
+    "connectedAs": "Đã kết nối với @{username}",
+    "nextReminder": "Lời nhắc tiếp theo",
+    "nextReminderDescription": "bebo sẽ gửi lời nhắc riêng tư này qua Telegram.",
+    "nextReminderSchedule": "Dự kiến gửi",
+    "scheduleUnavailable": "Hiện chưa thể xác định lịch gửi lời nhắc.",
+    "manageReminderSettings": "Quản lý cài đặt lời nhắc"
   },
   "Notifications": {
     "title": "Lịch sử thông báo",
@@ -215,6 +254,9 @@
     "sendTest": "Gửi thông báo thử",
     "testing": "Đang gửi thử...",
     "testSent": "Đã gửi thông báo thử tới Telegram.",
-    "testError": "Không thể gửi thông báo thử."
+    "testError": "Không thể gửi thông báo thử.",
+    "alreadyLinked": "Đã liên kết",
+    "alreadyLinkedTitle": "Tài khoản Telegram này đang được sử dụng",
+    "alreadyLinkedDescription": "Telegram này đã được kết nối với một tài khoản bebo khác. Hãy đăng nhập tài khoản đó và ngắt kết nối Telegram trước khi tạo liên kết mới."
   }
 }
