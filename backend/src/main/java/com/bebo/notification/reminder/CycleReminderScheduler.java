@@ -44,6 +44,8 @@ public class CycleReminderScheduler {
         notificationChannelRepository.findAllConnectedChannelIds(
             NotificationChannelStatus.CONNECTED);
 
+    log.debug("Scanning {} connected notification channels for due cycle reminders", channelIds.size());
+
     for (UUID channelId : channelIds) {
       try {
         cycleReminderProcessor.process(channelId, now);

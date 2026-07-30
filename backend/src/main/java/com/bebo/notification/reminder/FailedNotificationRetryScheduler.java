@@ -49,6 +49,8 @@ public class FailedNotificationRetryScheduler {
             now,
             PageRequest.of(0, reminderProperties.getRetryBatchSize()));
 
+    log.debug("Scanning {} failed notifications due for retry", notificationLogIds.size());
+
     for (UUID notificationLogId : notificationLogIds) {
       try {
         retryProcessor.retry(notificationLogId, now);

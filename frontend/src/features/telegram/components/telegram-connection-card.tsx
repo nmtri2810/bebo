@@ -8,6 +8,8 @@ import { useTranslations } from "next-intl";
 
 import { useRouter } from "next/navigation";
 
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 
 import { ApiClientError } from "@/lib/api/api-client";
@@ -56,8 +58,6 @@ export function TelegramConnectionCard({
   const [isTesting, setIsTesting] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleUnauthorized = useCallback(() => {
     clearSession();
@@ -120,6 +120,16 @@ export function TelegramConnectionCard({
             setDeepLink(null);
             setErrorMessage(null);
           }
+
+          if (result.status === "CONNECTED") {
+            toast.success(t("connectedToast"), {
+              id: "telegram-connected",
+            });
+          } else if (result.status === "ALREADY_LINKED") {
+            toast.error(t("alreadyLinkedTitle"), {
+              id: "telegram-already-linked",
+            });
+          }
         })
         .catch((error: unknown) => {
           if (error instanceof ApiClientError && error.status === 401) {
@@ -131,11 +141,10 @@ export function TelegramConnectionCard({
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [accessToken, connection?.status, handleUnauthorized, updateConnection]);
+  }, [accessToken, connection?.status, handleUnauthorized, t, updateConnection]);
 
   const handleConnect = async () => {
     setErrorMessage(null);
-    setSuccessMessage(null);
     setIsConnecting(true);
 
     try {
@@ -151,6 +160,10 @@ export function TelegramConnectionCard({
       setDeepLink(result.deepLink);
 
       window.open(result.deepLink, "_blank", "noopener,noreferrer");
+
+      toast.info(t("linkOpened"), {
+        id: "telegram-link-opened",
+      });
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 401) {
         handleUnauthorized();
@@ -158,7 +171,12 @@ export function TelegramConnectionCard({
         return;
       }
 
-      setErrorMessage(t("connectError"));
+      const message = t("connectError");
+
+      setErrorMessage(message);
+      toast.error(message, {
+        id: "telegram-connect-error",
+      });
     } finally {
       setIsConnecting(false);
     }
@@ -166,13 +184,14 @@ export function TelegramConnectionCard({
 
   const handleTest = async () => {
     setErrorMessage(null);
-    setSuccessMessage(null);
     setIsTesting(true);
 
     try {
       await sendTelegramTest(accessToken);
 
-      setSuccessMessage(t("testSent"));
+      toast.success(t("testSent"), {
+        id: "telegram-test-sent",
+      });
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 401) {
         handleUnauthorized();
@@ -180,7 +199,12 @@ export function TelegramConnectionCard({
         return;
       }
 
-      setErrorMessage(t("testError"));
+      const message = t("testError");
+
+      setErrorMessage(message);
+      toast.error(message, {
+        id: "telegram-test-error",
+      });
     } finally {
       setIsTesting(false);
     }
@@ -188,7 +212,6 @@ export function TelegramConnectionCard({
 
   const handleDisconnect = async () => {
     setErrorMessage(null);
-    setSuccessMessage(null);
     setIsDisconnecting(true);
 
     try {
@@ -202,6 +225,9 @@ export function TelegramConnectionCard({
       });
 
       setDeepLink(null);
+      toast.success(t("disconnectedToast"), {
+        id: "telegram-disconnected",
+      });
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 401) {
         handleUnauthorized();
@@ -209,7 +235,12 @@ export function TelegramConnectionCard({
         return;
       }
 
-      setErrorMessage(t("disconnectError"));
+      const message = t("disconnectError");
+
+      setErrorMessage(message);
+      toast.error(message, {
+        id: "telegram-disconnect-error",
+      });
     } finally {
       setIsDisconnecting(false);
     }
@@ -384,14 +415,6 @@ export function TelegramConnectionCard({
 
               {isConnecting ? t("connecting") : t("connect")}
             </Button>
-          )}
-
-          {successMessage && (
-            <div className="mt-4 flex items-center gap-2 rounded-[14px] bg-[#34c759]/10 px-4 py-3 text-sm font-medium text-[#248a3d]">
-              <Check className="size-4 shrink-0" />
-
-              {successMessage}
-            </div>
           )}
 
           {errorMessage && (

@@ -133,6 +133,7 @@
     "predictionUnavailable": "Hiện chưa thể tính dự đoán.",
     "loadError": "Không thể tải dữ liệu chu kỳ.",
     "saveError": "Không thể lưu ngày này.",
+    "periodCreated": "Đã lưu bản ghi kỳ kinh.",
     "logout": "Đăng xuất",
     "editPeriod": "Chỉnh sửa kỳ kinh",
     "editPeriodTitle": "Sửa ngày bắt đầu",
@@ -147,6 +148,8 @@
     "deleting": "Đang xóa...",
     "updateError": "Không thể cập nhật ngày này.",
     "deleteError": "Không thể xóa bản ghi.",
+    "periodUpdated": "Đã cập nhật bản ghi kỳ kinh.",
+    "periodDeleted": "Đã xóa bản ghi kỳ kinh.",
     "settings": "Cài đặt",
 
     "reminderStatus": "Trạng thái lời nhắc hằng ngày",
@@ -285,6 +288,7 @@
     "connecting": "Đang tạo liên kết...",
     "openTelegram": "Mở Telegram",
     "newLink": "Tạo liên kết mới",
+    "linkOpened": "Đã mở Telegram. Nhấn Start để hoàn tất kết nối.",
     "disconnect": "Ngắt kết nối",
     "disconnecting": "Đang ngắt kết nối...",
     "loadError": "Không thể tải trạng thái kết nối Telegram.",
@@ -294,6 +298,8 @@
     "testing": "Đang gửi thử...",
     "testSent": "Đã gửi thông báo thử tới Telegram.",
     "testError": "Không thể gửi thông báo thử.",
+    "connectedToast": "Telegram đã được kết nối.",
+    "disconnectedToast": "Telegram đã được ngắt kết nối.",
     "alreadyLinked": "Đã liên kết",
     "alreadyLinkedTitle": "Tài khoản Telegram này đang được sử dụng",
     "alreadyLinkedDescription": "Telegram này đã được kết nối với một tài khoản bebo khác. Hãy đăng nhập tài khoản đó và ngắt kết nối Telegram trước khi tạo liên kết mới."
@@ -320,6 +326,8 @@
     "testing": "Đang gửi thử...",
     "testSent": "Đã gửi thông báo thử tới Discord.",
     "testError": "Không thể gửi thông báo thử.",
+    "connectedToast": "Discord đã được kết nối.",
+    "disconnectedToast": "Discord đã được ngắt kết nối.",
     "alreadyLinked": "Đã liên kết",
     "alreadyLinkedTitle": "Tài khoản Discord này đang được sử dụng",
     "alreadyLinkedDescription": "Discord này đã được kết nối với một tài khoản bebo khác. Hãy đăng nhập tài khoản đó và ngắt kết nối Discord trước khi thử lại."

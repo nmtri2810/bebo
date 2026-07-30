@@ -11,11 +11,15 @@ import com.bebo.notification.telegram.dto.TelegramTestResponse;
 import com.bebo.user.User;
 import java.time.Instant;
 import org.springframework.beans.factory.ObjectProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class TelegramConnectionService {
+
+  private static final Logger log = LoggerFactory.getLogger(TelegramConnectionService.class);
 
   private static final String TEST_MESSAGE =
       """
@@ -73,6 +77,11 @@ public class TelegramConnectionService {
 
     channelRepository.save(channel);
 
+    log.info(
+        "Telegram connection started for user {} and notification channel {}",
+        user.getId(),
+        channel.getId());
+
     String username = properties.getBotUsername().trim().replaceFirst("^@", "");
 
     String deepLink = "https://t.me/" + username + "?start=" + token.rawToken();
@@ -91,6 +100,8 @@ public class TelegramConnectionService {
             .orElse(null);
 
     if (channel == null) {
+      log.warn("Telegram connection completion rejected because token is invalid");
+
       return ConnectionAttempt.INVALID;
     }
 
@@ -99,6 +110,11 @@ public class TelegramConnectionService {
     if (channel.getConnectTokenExpiresAt() == null
         || !channel.getConnectTokenExpiresAt().isAfter(now)) {
       channel.expireConnection();
+
+      log.info(
+          "Telegram connection expired for notification channel {} and user {}",
+          channel.getId(),
+          channel.getUser().getId());
 
       return ConnectionAttempt.EXPIRED;
     }
@@ -111,10 +127,21 @@ public class TelegramConnectionService {
     if (existingOwner != null && !isSameChannel(existingOwner, channel)) {
       channel.markAlreadyLinked();
 
+      log.warn(
+          "Telegram chat is already linked to notification channel {}; rejected channel {} for user {}",
+          existingOwner.getId(),
+          channel.getId(),
+          channel.getUser().getId());
+
       return ConnectionAttempt.ALREADY_LINKED;
     }
 
     channel.connectTelegram(telegramChatId, normalizeUsername(telegramUsername), now);
+
+    log.info(
+        "Telegram connected for notification channel {} and user {}",
+        channel.getId(),
+        channel.getUser().getId());
 
     return ConnectionAttempt.CONNECTED;
   }
@@ -141,6 +168,11 @@ public class TelegramConnectionService {
 
     telegramBotClient.sendMessage(channel.getTelegramChatId(), TEST_MESSAGE);
 
+    log.info(
+        "Telegram test notification sent for notification channel {} and user {}",
+        channel.getId(),
+        user.getId());
+
     return new TelegramTestResponse(true, Instant.now());
   }
 
@@ -148,7 +180,15 @@ public class TelegramConnectionService {
   public void disconnect(User user) {
     channelRepository
         .findByUser_IdAndChannelType(user.getId(), ChannelType.TELEGRAM)
-        .ifPresent(NotificationChannel::disconnect);
+        .ifPresent(
+            channel -> {
+              channel.disconnect();
+
+              log.info(
+                  "Telegram disconnected for notification channel {} and user {}",
+                  channel.getId(),
+                  user.getId());
+            });
   }
 
   private void validateConnectionConfiguration() {

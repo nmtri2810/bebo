@@ -4,6 +4,8 @@ import { getLocale } from "next-intl/server";
 
 import { AuthHydrator } from "@/components/auth-hydrator";
 
+import { Toaster } from "@/components/ui/toaster";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -24,6 +26,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
         <NextIntlClientProvider>
           <AuthHydrator />
           {children}
+          <Toaster />
         </NextIntlClientProvider>
       </body>
     </html>

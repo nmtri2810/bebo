@@ -6,6 +6,8 @@ import { CalendarDays, Plus } from "lucide-react";
 
 import { useTranslations } from "next-intl";
 
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -101,8 +103,16 @@ export function AddCycleDialog({ accessToken, onCreated }: AddCycleDialogProps) 
       await onCreated();
 
       handleOpenChange(false);
+      toast.success(t("periodCreated"), {
+        id: "cycle-period-created",
+      });
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, t("saveError")));
+      const message = getErrorMessage(error, t("saveError"));
+
+      setErrorMessage(message);
+      toast.error(message, {
+        id: "cycle-period-create-error",
+      });
     } finally {
       setIsSubmitting(false);
     }

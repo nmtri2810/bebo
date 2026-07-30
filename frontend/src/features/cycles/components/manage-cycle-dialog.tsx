@@ -6,6 +6,8 @@ import { CalendarDays, ChevronRight, Pencil, Trash2, TriangleAlert } from "lucid
 
 import { useTranslations } from "next-intl";
 
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -121,13 +123,21 @@ export function ManageCycleDialog({
       await onChanged();
 
       closeDialog();
+      toast.success(t("periodUpdated"), {
+        id: `cycle-period-updated-${record.id}`,
+      });
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 401) {
         onUnauthorized();
         return;
       }
 
-      setErrorMessage(getErrorMessage(error, t("updateError")));
+      const message = getErrorMessage(error, t("updateError"));
+
+      setErrorMessage(message);
+      toast.error(message, {
+        id: `cycle-period-update-error-${record.id}`,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -143,13 +153,21 @@ export function ManageCycleDialog({
       await onChanged();
 
       closeDialog();
+      toast.success(t("periodDeleted"), {
+        id: `cycle-period-deleted-${record.id}`,
+      });
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 401) {
         onUnauthorized();
         return;
       }
 
-      setErrorMessage(getErrorMessage(error, t("deleteError")));
+      const message = getErrorMessage(error, t("deleteError"));
+
+      setErrorMessage(message);
+      toast.error(message, {
+        id: `cycle-period-delete-error-${record.id}`,
+      });
     } finally {
       setIsSubmitting(false);
     }

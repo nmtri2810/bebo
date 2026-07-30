@@ -133,6 +133,7 @@
     "predictionUnavailable": "Prediction is currently unavailable.",
     "loadError": "We couldn't load your cycle data.",
     "saveError": "We couldn't save this date.",
+    "periodCreated": "Period record saved.",
     "logout": "Sign out",
     "editPeriod": "Edit period",
     "editPeriodTitle": "Edit period start",
@@ -147,6 +148,8 @@
     "deleting": "Deleting...",
     "updateError": "We couldn't update this date.",
     "deleteError": "We couldn't delete this record.",
+    "periodUpdated": "Period record updated.",
+    "periodDeleted": "Period record deleted.",
     "settings": "Settings",
 
     "reminderStatus": "Daily reminder status",
@@ -285,6 +288,7 @@
     "connecting": "Creating link...",
     "openTelegram": "Open Telegram",
     "newLink": "Generate a new link",
+    "linkOpened": "Telegram opened. Press Start to finish connecting.",
     "disconnect": "Disconnect",
     "disconnecting": "Disconnecting...",
     "loadError": "We couldn't load your Telegram connection.",
@@ -294,6 +298,8 @@
     "testing": "Sending test...",
     "testSent": "Test notification sent to Telegram.",
     "testError": "We couldn't send the test notification.",
+    "connectedToast": "Telegram connected.",
+    "disconnectedToast": "Telegram disconnected.",
     "alreadyLinked": "Already linked",
     "alreadyLinkedTitle": "This Telegram account is already in use",
     "alreadyLinkedDescription": "It is connected to another bebo account. Sign in to that account and disconnect Telegram before generating a new connection link."
@@ -320,6 +326,8 @@
     "testing": "Sending test...",
     "testSent": "Test notification sent to Discord.",
     "testError": "We couldn't send the test notification.",
+    "connectedToast": "Discord connected.",
+    "disconnectedToast": "Discord disconnected.",
     "alreadyLinked": "Already linked",
     "alreadyLinkedTitle": "This Discord account is already in use",
     "alreadyLinkedDescription": "It is connected to another bebo account. Sign in to that account and disconnect Discord before trying again."

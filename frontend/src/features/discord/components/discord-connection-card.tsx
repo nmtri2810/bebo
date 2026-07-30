@@ -8,6 +8,8 @@ import { useTranslations } from "next-intl";
 
 import { useRouter } from "next/navigation";
 
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 
 import { ApiClientError } from "@/lib/api/api-client";
@@ -58,8 +60,6 @@ export function DiscordConnectionCard({
   const [isTesting, setIsTesting] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleUnauthorized = useCallback(() => {
     clearSession();
@@ -121,6 +121,16 @@ export function DiscordConnectionCard({
           if (result.status !== "PENDING") {
             setErrorMessage(null);
           }
+
+          if (result.status === "CONNECTED") {
+            toast.success(t("connectedToast"), {
+              id: "discord-connected",
+            });
+          } else if (result.status === "ALREADY_LINKED") {
+            toast.error(t("alreadyLinkedTitle"), {
+              id: "discord-already-linked",
+            });
+          }
         })
         .catch((error: unknown) => {
           if (error instanceof ApiClientError && error.status === 401) {
@@ -132,11 +142,10 @@ export function DiscordConnectionCard({
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [accessToken, connection?.status, handleUnauthorized, updateConnection]);
+  }, [accessToken, connection?.status, handleUnauthorized, t, updateConnection]);
 
   const handleConnect = async () => {
     setErrorMessage(null);
-    setSuccessMessage(null);
     setIsConnecting(true);
 
     try {
@@ -163,7 +172,12 @@ export function DiscordConnectionCard({
         return;
       }
 
-      setErrorMessage(t("connectError"));
+      const message = t("connectError");
+
+      setErrorMessage(message);
+      toast.error(message, {
+        id: "discord-connect-error",
+      });
 
       setIsConnecting(false);
     }
@@ -171,13 +185,14 @@ export function DiscordConnectionCard({
 
   const handleTest = async () => {
     setErrorMessage(null);
-    setSuccessMessage(null);
     setIsTesting(true);
 
     try {
       await sendDiscordTest(accessToken);
 
-      setSuccessMessage(t("testSent"));
+      toast.success(t("testSent"), {
+        id: "discord-test-sent",
+      });
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 401) {
         handleUnauthorized();
@@ -185,7 +200,12 @@ export function DiscordConnectionCard({
         return;
       }
 
-      setErrorMessage(t("testError"));
+      const message = t("testError");
+
+      setErrorMessage(message);
+      toast.error(message, {
+        id: "discord-test-error",
+      });
     } finally {
       setIsTesting(false);
     }
@@ -193,7 +213,6 @@ export function DiscordConnectionCard({
 
   const handleDisconnect = async () => {
     setErrorMessage(null);
-    setSuccessMessage(null);
     setIsDisconnecting(true);
 
     try {
@@ -205,6 +224,9 @@ export function DiscordConnectionCard({
         discordUsername: null,
         connectedAt: null,
       });
+      toast.success(t("disconnectedToast"), {
+        id: "discord-disconnected",
+      });
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 401) {
         handleUnauthorized();
@@ -212,7 +234,12 @@ export function DiscordConnectionCard({
         return;
       }
 
-      setErrorMessage(t("disconnectError"));
+      const message = t("disconnectError");
+
+      setErrorMessage(message);
+      toast.error(message, {
+        id: "discord-disconnect-error",
+      });
     } finally {
       setIsDisconnecting(false);
     }
@@ -375,14 +402,6 @@ export function DiscordConnectionCard({
 
               {isConnecting ? t("connecting") : t("connect")}
             </Button>
-          )}
-
-          {successMessage && (
-            <div className="mt-4 flex items-center gap-2 rounded-[14px] bg-[#34c759]/10 px-4 py-3 text-sm font-medium text-[#248a3d]">
-              <Check className="size-4 shrink-0" />
-
-              {successMessage}
-            </div>
           )}
 
           {errorMessage && (

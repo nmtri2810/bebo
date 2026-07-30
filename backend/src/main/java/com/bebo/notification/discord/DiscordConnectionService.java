@@ -95,6 +95,11 @@ public class DiscordConnectionService {
 
     channelRepository.save(channel);
 
+    log.info(
+        "Discord connection started for user {} and notification channel {}",
+        user.getId(),
+        channel.getId());
+
     String authorizationUrl =
         UriComponentsBuilder.fromUriString("https://discord.com/oauth2/authorize")
             .queryParam("response_type", "code")
@@ -116,6 +121,8 @@ public class DiscordConnectionService {
   public ConnectionAttempt completeConnection(
       String authorizationCode, String rawState, String oauthError) {
     if (rawState == null || rawState.isBlank()) {
+      log.warn("Discord connection completion rejected because OAuth state is missing");
+
       return ConnectionAttempt.INVALID;
     }
 
@@ -127,11 +134,18 @@ public class DiscordConnectionService {
             .orElse(null);
 
     if (channel == null) {
+      log.warn("Discord connection completion rejected because OAuth state is invalid");
+
       return ConnectionAttempt.INVALID;
     }
 
     if (oauthError != null && !oauthError.isBlank()) {
       channel.disconnect();
+
+      log.info(
+          "Discord connection denied for notification channel {} and user {}",
+          channel.getId(),
+          channel.getUser().getId());
 
       return ConnectionAttempt.DENIED;
     }
@@ -142,11 +156,20 @@ public class DiscordConnectionService {
         || !channel.getConnectTokenExpiresAt().isAfter(now)) {
       channel.expireConnection();
 
+      log.info(
+          "Discord connection expired for notification channel {} and user {}",
+          channel.getId(),
+          channel.getUser().getId());
+
       return ConnectionAttempt.EXPIRED;
     }
 
     if (authorizationCode == null || authorizationCode.isBlank()) {
       channel.disconnect();
+
+      log.warn(
+          "Discord connection rejected because authorization code is missing for notification channel {}",
+          channel.getId());
 
       return ConnectionAttempt.INVALID;
     }
@@ -163,8 +186,14 @@ public class DiscordConnectionService {
               .findByChannelTypeAndExternalRecipientId(ChannelType.DISCORD, discordUser.id())
               .orElse(null);
 
-      if (existingOwner != null && !existingOwner.getId().equals(channel.getId())) {
+      if (existingOwner != null && !isSameChannel(existingOwner, channel)) {
         channel.markAlreadyLinked();
+
+        log.warn(
+            "Discord account is already linked to notification channel {}; rejected channel {} for user {}",
+            existingOwner.getId(),
+            channel.getId(),
+            channel.getUser().getId());
 
         return ConnectionAttempt.ALREADY_LINKED;
       }
@@ -174,6 +203,11 @@ public class DiscordConnectionService {
           new NotificationDeliveryRequest(discordUser.id(), CONNECTION_MESSAGE));
 
       channel.connectDiscord(discordUser.id(), discordUser.username(), now);
+
+      log.info(
+          "Discord connected for notification channel {} and user {}",
+          channel.getId(),
+          channel.getUser().getId());
 
       return ConnectionAttempt.CONNECTED;
     } catch (RuntimeException exception) {
@@ -205,6 +239,11 @@ public class DiscordConnectionService {
         ChannelType.DISCORD,
         new NotificationDeliveryRequest(channel.getExternalRecipientId(), TEST_MESSAGE));
 
+    log.info(
+        "Discord test notification sent for notification channel {} and user {}",
+        channel.getId(),
+        user.getId());
+
     return new DiscordTestResponse(true, Instant.now());
   }
 
@@ -212,7 +251,15 @@ public class DiscordConnectionService {
   public void disconnect(User user) {
     channelRepository
         .findByUser_IdAndChannelType(user.getId(), ChannelType.DISCORD)
-        .ifPresent(NotificationChannel::disconnect);
+        .ifPresent(
+            channel -> {
+              channel.disconnect();
+
+              log.info(
+                  "Discord disconnected for notification channel {} and user {}",
+                  channel.getId(),
+                  user.getId());
+            });
   }
 
   private DiscordOAuthClient requireOAuthClient() {
@@ -251,6 +298,18 @@ public class DiscordConnectionService {
     if (value == null || value.isBlank()) {
       throw new BadRequestException(propertyName + " is not configured");
     }
+  }
+
+  private boolean isSameChannel(NotificationChannel first, NotificationChannel second) {
+    if (first == second) {
+      return true;
+    }
+
+    if (first.getId() == null || second.getId() == null) {
+      return false;
+    }
+
+    return first.getId().equals(second.getId());
   }
 
   public enum ConnectionAttempt {

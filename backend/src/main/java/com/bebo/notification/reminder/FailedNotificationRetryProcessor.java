@@ -13,11 +13,15 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class FailedNotificationRetryProcessor {
+
+  private static final Logger log = LoggerFactory.getLogger(FailedNotificationRetryProcessor.class);
 
   private final NotificationLogRepository notificationLogRepository;
 
@@ -149,6 +153,11 @@ public class FailedNotificationRetryProcessor {
               channel.getExternalRecipientId(), notificationLog.getMessageBody()));
 
       notificationLog.markSent(now);
+
+      log.debug(
+          "Failed notification retry sent for notification log {} through {}",
+          notificationLog.getId(),
+          notificationLog.getChannelType());
     } catch (RuntimeException exception) {
       Instant nextRetryAt =
           notificationRetryPolicy
@@ -156,6 +165,13 @@ public class FailedNotificationRetryProcessor {
               .orElse(null);
 
       notificationLog.markFailed(getErrorMessage(exception), nextRetryAt);
+
+      log.warn(
+          "Failed notification retry delivery failed for notification log {} through {}; nextRetryAt={}",
+          notificationLog.getId(),
+          notificationLog.getChannelType(),
+          nextRetryAt,
+          exception);
     }
   }
 

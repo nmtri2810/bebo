@@ -6,7 +6,6 @@ import {
   Bell,
   BellRing,
   CalendarDays,
-  Check,
   CheckCircle2,
   ChevronRight,
   CircleAlert,
@@ -21,6 +20,8 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 
 import { useRouter, useSearchParams } from "next/navigation";
+
+import { toast } from "sonner";
 
 import { AppShell } from "@/components/app-shell";
 
@@ -124,8 +125,6 @@ function SettingsPageContent() {
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const [savedMessage, setSavedMessage] = useState<string | null>(null);
-
   const discordCallbackResult = parseDiscordCallbackResult(searchParams.get("discord"));
 
   useEffect(() => {
@@ -147,6 +146,26 @@ function SettingsPageContent() {
 
     router.replace(`${returnPath}?${params.toString()}`);
   }, [discordCallbackResult, router]);
+
+  useEffect(() => {
+    if (!discordCallbackResult) {
+      return;
+    }
+
+    if (discordCallbackResult === "connected") {
+      toast.success(t("discordConnectedNotice"), {
+        id: "discord-callback-connected",
+      });
+    } else if (discordCallbackResult === "expired" || discordCallbackResult === "denied") {
+      toast.warning(getDiscordCallbackMessage(discordCallbackResult, t), {
+        id: `discord-callback-${discordCallbackResult}`,
+      });
+    } else {
+      toast.error(getDiscordCallbackMessage(discordCallbackResult, t), {
+        id: `discord-callback-${discordCallbackResult}`,
+      });
+    }
+  }, [discordCallbackResult, t]);
 
   useEffect(() => {
     if (!hasHydrated) {
@@ -202,8 +221,6 @@ function SettingsPageContent() {
         [field]: value,
       };
     });
-
-    setSavedMessage(null);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -214,7 +231,6 @@ function SettingsPageContent() {
     }
 
     setErrorMessage(null);
-    setSavedMessage(null);
     setIsSaving(true);
 
     try {
@@ -237,7 +253,11 @@ function SettingsPageContent() {
         });
       }
 
-      setSavedMessage(t("saved"));
+      const message = t("saved");
+
+      toast.success(message, {
+        id: "settings-saved",
+      });
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 401) {
         clearSession();
@@ -246,7 +266,12 @@ function SettingsPageContent() {
         return;
       }
 
-      setErrorMessage(getErrorMessage(error, t("saveError")));
+      const message = getErrorMessage(error, t("saveError"));
+
+      setErrorMessage(message);
+      toast.error(message, {
+        id: "settings-save-error",
+      });
     } finally {
       setIsSaving(false);
     }
@@ -366,14 +391,6 @@ function SettingsPageContent() {
             </div>
           )}
 
-          {savedMessage && (
-            <div className="flex items-center gap-2 rounded-[16px] bg-[#34c759]/10 px-4 py-3 text-sm font-medium text-[#248a3d]">
-              <Check className="size-4" />
-
-              {savedMessage}
-            </div>
-          )}
-
           <Button
             type="submit"
             disabled={isSaving}
@@ -422,19 +439,8 @@ function SettingsPageContent() {
   );
 }
 
-type DiscordCallbackNoticeProps = {
-  result: DiscordCallbackResult;
-  onDismiss: () => void;
-};
-
-function DiscordCallbackNotice({ result, onDismiss }: DiscordCallbackNoticeProps) {
-  const t = useTranslations("Settings");
-
-  const isSuccess = result === "connected";
-
-  const isWarning = result === "expired" || result === "denied";
-
-  const message = {
+function getDiscordCallbackMessage(result: DiscordCallbackResult, t: ReturnType<typeof useTranslations<"Settings">>) {
+  return {
     connected: t("discordConnectedNotice"),
 
     already_linked: t("discordAlreadyLinkedNotice"),
@@ -447,12 +453,27 @@ function DiscordCallbackNotice({ result, onDismiss }: DiscordCallbackNoticeProps
 
     invalid: t("discordInvalidNotice"),
   }[result];
+}
+
+type DiscordCallbackNoticeProps = {
+  result: DiscordCallbackResult;
+  onDismiss: () => void;
+};
+
+function DiscordCallbackNotice({ result, onDismiss }: DiscordCallbackNoticeProps) {
+  const t = useTranslations("Settings");
+
+  const isSuccess = result === "connected";
+
+  const isWarning = result === "expired" || result === "denied";
+
+  const message = getDiscordCallbackMessage(result, t);
 
   const containerClassName = isSuccess
-    ? "mb-7 flex items-start gap-3 rounded-[18px] bg-[#34c759]/10 px-4 py-3.5 text-[#248a3d]"
+    ? "mb-7 flex items-center gap-3 rounded-[18px] bg-[#34c759]/10 px-4 py-3.5 text-[#248a3d]"
     : isWarning
-      ? "mb-7 flex items-start gap-3 rounded-[18px] bg-[#ff9500]/10 px-4 py-3.5 text-[#c93400]"
-      : "mb-7 flex items-start gap-3 rounded-[18px] bg-[#ff3b30]/10 px-4 py-3.5 text-[#d70015]";
+      ? "mb-7 flex items-center gap-3 rounded-[18px] bg-[#ff9500]/10 px-4 py-3.5 text-[#c93400]"
+      : "mb-7 flex items-center gap-3 rounded-[18px] bg-[#ff3b30]/10 px-4 py-3.5 text-[#d70015]";
 
   return (
     <div role="status" className={containerClassName}>

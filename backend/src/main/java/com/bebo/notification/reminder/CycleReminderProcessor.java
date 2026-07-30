@@ -14,11 +14,15 @@ import com.bebo.user.User;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CycleReminderProcessor {
+
+  private static final Logger log = LoggerFactory.getLogger(CycleReminderProcessor.class);
 
   private final NotificationChannelRepository notificationChannelRepository;
 
@@ -131,6 +135,11 @@ public class CycleReminderProcessor {
           new NotificationDeliveryRequest(channel.getExternalRecipientId(), messageBody));
 
       notificationLog.markSent(now);
+
+      log.debug(
+          "Cycle reminder sent for notification log {} through {}",
+          notificationLog.getId(),
+          channel.getChannelType());
     } catch (RuntimeException exception) {
       Instant nextRetryAt =
           notificationRetryPolicy
@@ -138,6 +147,13 @@ public class CycleReminderProcessor {
               .orElse(null);
 
       notificationLog.markFailed(getErrorMessage(exception), nextRetryAt);
+
+      log.warn(
+          "Cycle reminder delivery failed for notification log {} through {}; nextRetryAt={}",
+          notificationLog.getId(),
+          channel.getChannelType(),
+          nextRetryAt,
+          exception);
     }
   }
 
