@@ -2,24 +2,22 @@ package com.bebo.notification.reminder;
 
 import com.bebo.cycle.CycleRecord;
 import com.bebo.cycle.CycleRecordRepository;
-import com.bebo.notification.ChannelType;
 import com.bebo.notification.NotificationChannel;
 import com.bebo.notification.NotificationChannelRepository;
 import com.bebo.notification.NotificationChannelStatus;
 import com.bebo.notification.NotificationLog;
 import com.bebo.notification.NotificationLogRepository;
 import com.bebo.notification.NotificationType;
-import com.bebo.notification.telegram.TelegramBotClient;
+import com.bebo.notification.delivery.NotificationDeliveryRequest;
+import com.bebo.notification.delivery.NotificationDispatcher;
 import com.bebo.user.User;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.UUID;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@ConditionalOnProperty(prefix = "bebo.telegram", name = "enabled", havingValue = "true")
 public class CycleReminderProcessor {
 
   private final NotificationChannelRepository notificationChannelRepository;
@@ -34,7 +32,7 @@ public class CycleReminderProcessor {
 
   private final NotificationRetryPolicy notificationRetryPolicy;
 
-  private final TelegramBotClient telegramBotClient;
+  private final NotificationDispatcher notificationDispatcher;
 
   public CycleReminderProcessor(
       NotificationChannelRepository notificationChannelRepository,
@@ -43,7 +41,7 @@ public class CycleReminderProcessor {
       CycleReminderPlanService cycleReminderPlanService,
       CycleReminderMessageBuilder messageBuilder,
       NotificationRetryPolicy notificationRetryPolicy,
-      TelegramBotClient telegramBotClient) {
+      NotificationDispatcher notificationDispatcher) {
     this.notificationChannelRepository = notificationChannelRepository;
 
     this.notificationLogRepository = notificationLogRepository;
@@ -56,14 +54,14 @@ public class CycleReminderProcessor {
 
     this.notificationRetryPolicy = notificationRetryPolicy;
 
-    this.telegramBotClient = telegramBotClient;
+    this.notificationDispatcher = notificationDispatcher;
   }
 
   @Transactional
   public void process(UUID channelId, Instant now) {
     NotificationChannel channel = notificationChannelRepository.findById(channelId).orElse(null);
 
-    if (!isUsableTelegramChannel(channel)) {
+    if (!isUsableChannel(channel)) {
       return;
     }
 
@@ -94,7 +92,7 @@ public class CycleReminderProcessor {
                 plan.predictedPeriodDate(),
                 delivery.deliveryLocalDate(),
                 NotificationType.CYCLE_APPROACHING,
-                ChannelType.TELEGRAM);
+                channel.getChannelType());
 
     if (alreadyProcessed) {
       return;
@@ -110,7 +108,7 @@ public class CycleReminderProcessor {
         NotificationLog.createPending(
             user,
             cycleRecord,
-            ChannelType.TELEGRAM,
+            channel.getChannelType(),
             plan.predictedPeriodDate(),
             delivery.deliveryLocalDate(),
             delivery.stage(),
@@ -121,13 +119,16 @@ public class CycleReminderProcessor {
     notificationLog.startAttempt(now);
 
     /*
-     * Flush trước khi gọi Telegram để
-     * reserve unique daily deduplication key.
+     * Flush trước khi gửi để reserve
+     * unique key theo user, channel,
+     * prediction và local delivery date.
      */
-    notificationLogRepository.saveAndFlush(notificationLog);
+    notificationLog = notificationLogRepository.saveAndFlush(notificationLog);
 
     try {
-      telegramBotClient.sendMessage(channel.getTelegramChatId(), messageBody);
+      notificationDispatcher.send(
+          channel.getChannelType(),
+          new NotificationDeliveryRequest(channel.getExternalRecipientId(), messageBody));
 
       notificationLog.markSent(now);
     } catch (RuntimeException exception) {
@@ -140,12 +141,13 @@ public class CycleReminderProcessor {
     }
   }
 
-  private boolean isUsableTelegramChannel(NotificationChannel channel) {
+  private boolean isUsableChannel(NotificationChannel channel) {
     return channel != null
-        && channel.getChannelType() == ChannelType.TELEGRAM
         && channel.isEnabled()
         && channel.getConnectionStatus() == NotificationChannelStatus.CONNECTED
-        && channel.getTelegramChatId() != null;
+        && channel.getExternalRecipientId() != null
+        && !channel.getExternalRecipientId().isBlank()
+        && notificationDispatcher.supports(channel.getChannelType());
   }
 
   private String getErrorMessage(RuntimeException exception) {

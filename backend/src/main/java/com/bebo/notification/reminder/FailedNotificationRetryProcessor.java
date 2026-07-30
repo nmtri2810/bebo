@@ -1,24 +1,22 @@
 package com.bebo.notification.reminder;
 
-import com.bebo.notification.ChannelType;
 import com.bebo.notification.NotificationChannel;
 import com.bebo.notification.NotificationChannelRepository;
 import com.bebo.notification.NotificationChannelStatus;
 import com.bebo.notification.NotificationLog;
 import com.bebo.notification.NotificationLogRepository;
 import com.bebo.notification.NotificationType;
-import com.bebo.notification.telegram.TelegramBotClient;
+import com.bebo.notification.delivery.NotificationDeliveryRequest;
+import com.bebo.notification.delivery.NotificationDispatcher;
 import com.bebo.user.User;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.UUID;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@ConditionalOnProperty(prefix = "bebo.telegram", name = "enabled", havingValue = "true")
 public class FailedNotificationRetryProcessor {
 
   private final NotificationLogRepository notificationLogRepository;
@@ -29,14 +27,14 @@ public class FailedNotificationRetryProcessor {
 
   private final NotificationRetryPolicy notificationRetryPolicy;
 
-  private final TelegramBotClient telegramBotClient;
+  private final NotificationDispatcher notificationDispatcher;
 
   public FailedNotificationRetryProcessor(
       NotificationLogRepository notificationLogRepository,
       NotificationChannelRepository notificationChannelRepository,
       CycleReminderPlanService cycleReminderPlanService,
       NotificationRetryPolicy notificationRetryPolicy,
-      TelegramBotClient telegramBotClient) {
+      NotificationDispatcher notificationDispatcher) {
     this.notificationLogRepository = notificationLogRepository;
 
     this.notificationChannelRepository = notificationChannelRepository;
@@ -45,7 +43,7 @@ public class FailedNotificationRetryProcessor {
 
     this.notificationRetryPolicy = notificationRetryPolicy;
 
-    this.telegramBotClient = telegramBotClient;
+    this.notificationDispatcher = notificationDispatcher;
   }
 
   @Transactional
@@ -57,8 +55,7 @@ public class FailedNotificationRetryProcessor {
       return;
     }
 
-    if (notificationLog.getChannelType() != ChannelType.TELEGRAM
-        || notificationLog.getNotificationType() != NotificationType.CYCLE_APPROACHING) {
+    if (notificationLog.getNotificationType() != NotificationType.CYCLE_APPROACHING) {
       notificationLog.stopRetry("Retry stopped because notification type is unsupported.");
 
       return;
@@ -74,12 +71,24 @@ public class FailedNotificationRetryProcessor {
 
     NotificationChannel channel =
         notificationChannelRepository
-            .findByUser_IdAndChannelType(user.getId(), ChannelType.TELEGRAM)
+            .findByUser_IdAndChannelType(user.getId(), notificationLog.getChannelType())
             .orElse(null);
 
-    if (!isUsableTelegramChannel(channel)) {
-      notificationLog.stopRetry("Retry stopped because Telegram is disconnected or disabled.");
+    if (!isConnectedChannel(channel)) {
+      notificationLog.stopRetry(
+          "Retry stopped because the notification channel is disconnected or disabled.");
 
+      return;
+    }
+
+    /*
+     * Provider có thể bị tắt tạm thời
+     * trong deployment.
+     *
+     * Giữ nguyên retry để tiếp tục khi
+     * NotificationSender được bật lại.
+     */
+    if (!notificationDispatcher.supports(notificationLog.getChannelType())) {
       return;
     }
 
@@ -134,7 +143,10 @@ public class FailedNotificationRetryProcessor {
     notificationLog.startAttempt(now);
 
     try {
-      telegramBotClient.sendMessage(channel.getTelegramChatId(), notificationLog.getMessageBody());
+      notificationDispatcher.send(
+          notificationLog.getChannelType(),
+          new NotificationDeliveryRequest(
+              channel.getExternalRecipientId(), notificationLog.getMessageBody()));
 
       notificationLog.markSent(now);
     } catch (RuntimeException exception) {
@@ -147,12 +159,12 @@ public class FailedNotificationRetryProcessor {
     }
   }
 
-  private boolean isUsableTelegramChannel(NotificationChannel channel) {
+  private boolean isConnectedChannel(NotificationChannel channel) {
     return channel != null
-        && channel.getChannelType() == ChannelType.TELEGRAM
         && channel.isEnabled()
         && channel.getConnectionStatus() == NotificationChannelStatus.CONNECTED
-        && channel.getTelegramChatId() != null;
+        && channel.getExternalRecipientId() != null
+        && !channel.getExternalRecipientId().isBlank();
   }
 
   private String getErrorMessage(RuntimeException exception) {

@@ -8,7 +8,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.bebo.notification.ChannelType;
 import com.bebo.notification.NotificationLogRepository;
 import com.bebo.notification.NotificationStatus;
 import com.bebo.notification.NotificationType;
@@ -36,6 +35,7 @@ class FailedNotificationRetrySchedulerTest {
   @BeforeEach
   void setUp() {
     reminderProperties = new ReminderProperties();
+
     reminderProperties.setRetryBatchSize(2);
 
     scheduler =
@@ -53,13 +53,13 @@ class FailedNotificationRetrySchedulerTest {
   }
 
   @Test
-  void retryFailedNotificationsProcessesDueFailedNotificationLogs() {
+  void retryFailedNotificationsProcessesAllDueChannels() {
     UUID firstLogId = UUID.randomUUID();
+
     UUID secondLogId = UUID.randomUUID();
 
     when(notificationLogRepository.findDueRetryIds(
             eq(NotificationStatus.FAILED),
-            eq(ChannelType.TELEGRAM),
             eq(NotificationType.CYCLE_APPROACHING),
             any(Instant.class),
             eq(PageRequest.of(0, 2))))
@@ -68,17 +68,18 @@ class FailedNotificationRetrySchedulerTest {
     scheduler.retryFailedNotifications();
 
     verify(retryProcessor).retry(eq(firstLogId), any(Instant.class));
+
     verify(retryProcessor).retry(eq(secondLogId), any(Instant.class));
   }
 
   @Test
   void retryFailedNotificationsContinuesWhenOneRetryFails() {
     UUID failingLogId = UUID.randomUUID();
+
     UUID nextLogId = UUID.randomUUID();
 
     when(notificationLogRepository.findDueRetryIds(
             eq(NotificationStatus.FAILED),
-            eq(ChannelType.TELEGRAM),
             eq(NotificationType.CYCLE_APPROACHING),
             any(Instant.class),
             eq(PageRequest.of(0, 2))))
@@ -91,6 +92,7 @@ class FailedNotificationRetrySchedulerTest {
     scheduler.retryFailedNotifications();
 
     verify(retryProcessor).retry(eq(failingLogId), any(Instant.class));
+
     verify(retryProcessor).retry(eq(nextLogId), any(Instant.class));
   }
 
@@ -98,7 +100,6 @@ class FailedNotificationRetrySchedulerTest {
   void retryFailedNotificationsSkipsProcessorWhenThereAreNoDueRetries() {
     when(notificationLogRepository.findDueRetryIds(
             eq(NotificationStatus.FAILED),
-            eq(ChannelType.TELEGRAM),
             eq(NotificationType.CYCLE_APPROACHING),
             any(Instant.class),
             eq(PageRequest.of(0, 2))))

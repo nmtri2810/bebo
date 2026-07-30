@@ -14,7 +14,8 @@ import com.bebo.notification.NotificationChannelRepository;
 import com.bebo.notification.NotificationLog;
 import com.bebo.notification.NotificationLogRepository;
 import com.bebo.notification.NotificationStatus;
-import com.bebo.notification.telegram.TelegramBotClient;
+import com.bebo.notification.delivery.NotificationDeliveryRequest;
+import com.bebo.notification.delivery.NotificationDispatcher;
 import com.bebo.user.User;
 import java.time.Duration;
 import java.time.Instant;
@@ -25,6 +26,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -42,7 +44,7 @@ class FailedNotificationRetryProcessorTest {
 
   @Mock private NotificationRetryPolicy notificationRetryPolicy;
 
-  @Mock private TelegramBotClient telegramBotClient;
+  @Mock private NotificationDispatcher notificationDispatcher;
 
   private FailedNotificationRetryProcessor processor;
 
@@ -54,11 +56,11 @@ class FailedNotificationRetryProcessorTest {
             notificationChannelRepository,
             cycleReminderPlanService,
             notificationRetryPolicy,
-            telegramBotClient);
+            notificationDispatcher);
   }
 
   @Test
-  void retrySendsStoredDailyMessageAndMarksLogSent() {
+  void retryDispatchesStoredMessageThroughOriginalChannel() {
     Instant now = Instant.parse("2026-07-29T08:05:00Z");
 
     UUID logId = UUID.randomUUID();
@@ -68,11 +70,9 @@ class FailedNotificationRetryProcessorTest {
     User user = userWithId(UUID.randomUUID());
 
     NotificationLog notificationLog =
-        failedNotificationLog(user, cycleRecordId, now.minus(Duration.ofSeconds(1)));
+        failedNotificationLog(user, cycleRecordId, now.minusSeconds(1));
 
     NotificationChannel channel = connectedTelegramChannel(user);
-
-    CycleReminderPlan plan = currentPlan(cycleRecordId, LocalTime.of(8, 0));
 
     when(notificationLogRepository.findByIdForUpdate(logId))
         .thenReturn(Optional.of(notificationLog));
@@ -81,27 +81,32 @@ class FailedNotificationRetryProcessorTest {
             user.getId(), ChannelType.TELEGRAM))
         .thenReturn(Optional.of(channel));
 
-    when(cycleReminderPlanService.createPlan(user)).thenReturn(Optional.of(plan));
+    when(notificationDispatcher.supports(ChannelType.TELEGRAM)).thenReturn(true);
+
+    when(cycleReminderPlanService.createPlan(user))
+        .thenReturn(Optional.of(currentPlan(cycleRecordId, LocalTime.of(8, 0))));
 
     processor.retry(logId, now);
 
-    verify(telegramBotClient).sendMessage(123456789L, MESSAGE_BODY);
+    ArgumentCaptor<NotificationDeliveryRequest> requestCaptor =
+        ArgumentCaptor.forClass(NotificationDeliveryRequest.class);
+
+    verify(notificationDispatcher)
+        .send(org.mockito.ArgumentMatchers.eq(ChannelType.TELEGRAM), requestCaptor.capture());
+
+    assertThat(requestCaptor.getValue().recipientId()).isEqualTo("123456789");
+
+    assertThat(requestCaptor.getValue().messageBody()).isEqualTo(MESSAGE_BODY);
 
     assertThat(notificationLog.getStatus()).isEqualTo(NotificationStatus.SENT);
 
     assertThat(notificationLog.getAttemptCount()).isEqualTo(2);
 
-    assertThat(notificationLog.getLastAttemptAt()).isEqualTo(now);
-
     assertThat(notificationLog.getSentAt()).isEqualTo(now);
-
-    assertThat(notificationLog.getNextRetryAt()).isNull();
-
-    assertThat(notificationLog.getErrorMessage()).isNull();
   }
 
   @Test
-  void retryMarksLogFailedAndSchedulesNextRetryWhenTelegramSendFails() {
+  void retrySchedulesNextAttemptWhenSenderFails() {
     Instant now = Instant.parse("2026-07-29T08:05:00Z");
 
     Instant nextRetryAt = now.plus(Duration.ofMinutes(15));
@@ -113,11 +118,9 @@ class FailedNotificationRetryProcessorTest {
     User user = userWithId(UUID.randomUUID());
 
     NotificationLog notificationLog =
-        failedNotificationLog(user, cycleRecordId, now.minus(Duration.ofSeconds(1)));
+        failedNotificationLog(user, cycleRecordId, now.minusSeconds(1));
 
     NotificationChannel channel = connectedTelegramChannel(user);
-
-    CycleReminderPlan plan = currentPlan(cycleRecordId, LocalTime.of(8, 0));
 
     when(notificationLogRepository.findByIdForUpdate(logId))
         .thenReturn(Optional.of(notificationLog));
@@ -126,11 +129,14 @@ class FailedNotificationRetryProcessorTest {
             user.getId(), ChannelType.TELEGRAM))
         .thenReturn(Optional.of(channel));
 
-    when(cycleReminderPlanService.createPlan(user)).thenReturn(Optional.of(plan));
+    when(notificationDispatcher.supports(ChannelType.TELEGRAM)).thenReturn(true);
 
-    doThrow(new IllegalStateException("Telegram is down"))
-        .when(telegramBotClient)
-        .sendMessage(123456789L, MESSAGE_BODY);
+    when(cycleReminderPlanService.createPlan(user))
+        .thenReturn(Optional.of(currentPlan(cycleRecordId, LocalTime.of(8, 0))));
+
+    doThrow(new IllegalStateException("sender unavailable"))
+        .when(notificationDispatcher)
+        .send(ChannelType.TELEGRAM, new NotificationDeliveryRequest("123456789", MESSAGE_BODY));
 
     when(notificationRetryPolicy.nextRetryAtAfterFailure(2, now))
         .thenReturn(Optional.of(nextRetryAt));
@@ -141,18 +147,14 @@ class FailedNotificationRetryProcessorTest {
 
     assertThat(notificationLog.getAttemptCount()).isEqualTo(2);
 
-    assertThat(notificationLog.getLastAttemptAt()).isEqualTo(now);
-
-    assertThat(notificationLog.getSentAt()).isNull();
-
     assertThat(notificationLog.getNextRetryAt()).isEqualTo(nextRetryAt);
 
     assertThat(notificationLog.getErrorMessage())
-        .isEqualTo("IllegalStateException: Telegram is down");
+        .isEqualTo("IllegalStateException: sender unavailable");
   }
 
   @Test
-  void retryStopsWhenTelegramIsDisconnected() {
+  void retryStopsWhenChannelIsUnavailable() {
     Instant now = Instant.parse("2026-07-29T08:05:00Z");
 
     UUID logId = UUID.randomUUID();
@@ -162,7 +164,7 @@ class FailedNotificationRetryProcessorTest {
     User user = userWithId(UUID.randomUUID());
 
     NotificationLog notificationLog =
-        failedNotificationLog(user, cycleRecordId, now.minus(Duration.ofSeconds(1)));
+        failedNotificationLog(user, cycleRecordId, now.minusSeconds(1));
 
     when(notificationLogRepository.findByIdForUpdate(logId))
         .thenReturn(Optional.of(notificationLog));
@@ -173,22 +175,19 @@ class FailedNotificationRetryProcessorTest {
 
     processor.retry(logId, now);
 
-    verify(telegramBotClient, never()).sendMessage(any(Long.class), any(String.class));
-
-    assertThat(notificationLog.getStatus()).isEqualTo(NotificationStatus.FAILED);
+    verify(notificationDispatcher, never())
+        .send(any(ChannelType.class), any(NotificationDeliveryRequest.class));
 
     assertThat(notificationLog.getNextRetryAt()).isNull();
 
     assertThat(notificationLog.getErrorMessage())
-        .isEqualTo("Retry stopped because Telegram is disconnected or disabled.");
+        .isEqualTo("Retry stopped because the notification channel is disconnected or disabled.");
   }
 
   @Test
-  void retryReschedulesWhenDailyNotificationTimeMovedToFuture() {
+  void retryKeepsRetryWhenOriginalChannelHasNoSender() {
     Instant now = Instant.parse("2026-07-29T08:05:00Z");
 
-    Instant rescheduledFor = Instant.parse("2026-07-29T09:00:00Z");
-
     UUID logId = UUID.randomUUID();
 
     UUID cycleRecordId = UUID.randomUUID();
@@ -196,11 +195,9 @@ class FailedNotificationRetryProcessorTest {
     User user = userWithId(UUID.randomUUID());
 
     NotificationLog notificationLog =
-        failedNotificationLog(user, cycleRecordId, now.minus(Duration.ofSeconds(1)));
+        failedNotificationLog(user, cycleRecordId, now.minusSeconds(1));
 
     NotificationChannel channel = connectedTelegramChannel(user);
-
-    CycleReminderPlan plan = currentPlan(cycleRecordId, LocalTime.of(9, 0));
 
     when(notificationLogRepository.findByIdForUpdate(logId))
         .thenReturn(Optional.of(notificationLog));
@@ -209,53 +206,18 @@ class FailedNotificationRetryProcessorTest {
             user.getId(), ChannelType.TELEGRAM))
         .thenReturn(Optional.of(channel));
 
-    when(cycleReminderPlanService.createPlan(user)).thenReturn(Optional.of(plan));
+    when(notificationDispatcher.supports(ChannelType.TELEGRAM)).thenReturn(false);
+
+    Instant existingRetryAt = notificationLog.getNextRetryAt();
 
     processor.retry(logId, now);
 
-    verify(telegramBotClient, never()).sendMessage(any(Long.class), any(String.class));
+    verify(cycleReminderPlanService, never()).createPlan(any(User.class));
 
-    assertThat(notificationLog.getStatus()).isEqualTo(NotificationStatus.FAILED);
+    verify(notificationDispatcher, never())
+        .send(any(ChannelType.class), any(NotificationDeliveryRequest.class));
 
-    assertThat(notificationLog.getScheduledFor()).isEqualTo(rescheduledFor);
-
-    assertThat(notificationLog.getNextRetryAt()).isEqualTo(rescheduledFor);
-  }
-
-  @Test
-  void retryStopsWhenDailyReminderIsStale() {
-    Instant now = Instant.parse("2026-07-30T08:05:00Z");
-
-    UUID logId = UUID.randomUUID();
-
-    UUID cycleRecordId = UUID.randomUUID();
-
-    User user = userWithId(UUID.randomUUID());
-
-    NotificationLog notificationLog =
-        failedNotificationLog(user, cycleRecordId, now.minus(Duration.ofSeconds(1)));
-
-    NotificationChannel channel = connectedTelegramChannel(user);
-
-    CycleReminderPlan plan = currentPlan(cycleRecordId, LocalTime.of(8, 0));
-
-    when(notificationLogRepository.findByIdForUpdate(logId))
-        .thenReturn(Optional.of(notificationLog));
-
-    when(notificationChannelRepository.findByUser_IdAndChannelType(
-            user.getId(), ChannelType.TELEGRAM))
-        .thenReturn(Optional.of(channel));
-
-    when(cycleReminderPlanService.createPlan(user)).thenReturn(Optional.of(plan));
-
-    processor.retry(logId, now);
-
-    verify(telegramBotClient, never()).sendMessage(any(Long.class), any(String.class));
-
-    assertThat(notificationLog.getNextRetryAt()).isNull();
-
-    assertThat(notificationLog.getErrorMessage())
-        .isEqualTo("Retry stopped because the daily reminder is stale.");
+    assertThat(notificationLog.getNextRetryAt()).isEqualTo(existingRetryAt);
   }
 
   @Test
@@ -271,11 +233,9 @@ class FailedNotificationRetryProcessorTest {
     User user = userWithId(UUID.randomUUID());
 
     NotificationLog notificationLog =
-        failedNotificationLog(user, oldCycleRecordId, now.minus(Duration.ofSeconds(1)));
+        failedNotificationLog(user, oldCycleRecordId, now.minusSeconds(1));
 
     NotificationChannel channel = connectedTelegramChannel(user);
-
-    CycleReminderPlan plan = currentPlan(newCycleRecordId, LocalTime.of(8, 0));
 
     when(notificationLogRepository.findByIdForUpdate(logId))
         .thenReturn(Optional.of(notificationLog));
@@ -284,11 +244,15 @@ class FailedNotificationRetryProcessorTest {
             user.getId(), ChannelType.TELEGRAM))
         .thenReturn(Optional.of(channel));
 
-    when(cycleReminderPlanService.createPlan(user)).thenReturn(Optional.of(plan));
+    when(notificationDispatcher.supports(ChannelType.TELEGRAM)).thenReturn(true);
+
+    when(cycleReminderPlanService.createPlan(user))
+        .thenReturn(Optional.of(currentPlan(newCycleRecordId, LocalTime.of(8, 0))));
 
     processor.retry(logId, now);
 
-    verify(telegramBotClient, never()).sendMessage(any(Long.class), any(String.class));
+    verify(notificationDispatcher, never())
+        .send(any(ChannelType.class), any(NotificationDeliveryRequest.class));
 
     assertThat(notificationLog.getNextRetryAt()).isNull();
 

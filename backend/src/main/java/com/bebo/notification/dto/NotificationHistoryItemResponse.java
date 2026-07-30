@@ -21,8 +21,8 @@ public record NotificationHistoryItemResponse(
     Instant nextRetryAt,
     String failureMessage) {
 
-  private static final String SAFE_TELEGRAM_FAILURE_MESSAGE =
-      "Telegram could not deliver this reminder.";
+  private static final String SAFE_FAILURE_MESSAGE =
+      "This notification channel could not deliver the reminder.";
 
   public static NotificationHistoryItemResponse from(NotificationLog log) {
     return new NotificationHistoryItemResponse(
@@ -45,11 +45,12 @@ public record NotificationHistoryItemResponse(
     }
 
     /*
-     * Không trả raw error_message ra client.
+     * Không trả raw error_message
+     * ra frontend.
      *
-     * Exception từ HTTP client có thể chứa
-     * URL nội bộ hoặc Telegram bot token.
+     * Exception HTTP có thể chứa URL,
+     * token hoặc thông tin nội bộ.
      */
-    return SAFE_TELEGRAM_FAILURE_MESSAGE;
+    return SAFE_FAILURE_MESSAGE;
   }
 }

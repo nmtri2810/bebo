@@ -8,7 +8,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.bebo.notification.ChannelType;
 import com.bebo.notification.NotificationChannelRepository;
 import com.bebo.notification.NotificationChannelStatus;
 import java.time.Instant;
@@ -50,27 +49,30 @@ class CycleReminderSchedulerTest {
   }
 
   @Test
-  void sendDueRemindersProcessesAllConnectedTelegramChannels() {
+  void sendDueRemindersProcessesAllConnectedChannels() {
     UUID firstChannelId = UUID.randomUUID();
+
     UUID secondChannelId = UUID.randomUUID();
 
     when(notificationChannelRepository.findAllConnectedChannelIds(
-            ChannelType.TELEGRAM, NotificationChannelStatus.CONNECTED))
+            NotificationChannelStatus.CONNECTED))
         .thenReturn(List.of(firstChannelId, secondChannelId));
 
     scheduler.sendDueReminders();
 
     verify(cycleReminderProcessor).process(eq(firstChannelId), any(Instant.class));
+
     verify(cycleReminderProcessor).process(eq(secondChannelId), any(Instant.class));
   }
 
   @Test
   void sendDueRemindersContinuesWhenOneChannelFails() {
     UUID failingChannelId = UUID.randomUUID();
+
     UUID nextChannelId = UUID.randomUUID();
 
     when(notificationChannelRepository.findAllConnectedChannelIds(
-            ChannelType.TELEGRAM, NotificationChannelStatus.CONNECTED))
+            NotificationChannelStatus.CONNECTED))
         .thenReturn(List.of(failingChannelId, nextChannelId));
 
     doThrow(new IllegalStateException("boom"))
@@ -80,13 +82,14 @@ class CycleReminderSchedulerTest {
     scheduler.sendDueReminders();
 
     verify(cycleReminderProcessor).process(eq(failingChannelId), any(Instant.class));
+
     verify(cycleReminderProcessor).process(eq(nextChannelId), any(Instant.class));
   }
 
   @Test
   void sendDueRemindersSkipsProcessorWhenThereAreNoConnectedChannels() {
     when(notificationChannelRepository.findAllConnectedChannelIds(
-            ChannelType.TELEGRAM, NotificationChannelStatus.CONNECTED))
+            NotificationChannelStatus.CONNECTED))
         .thenReturn(List.of());
 
     scheduler.sendDueReminders();

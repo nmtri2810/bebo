@@ -25,11 +25,9 @@ public interface NotificationChannelRepository extends JpaRepository<Notificatio
       """
       select channel.id
       from NotificationChannel channel
-      where channel.channelType = :channelType
-        and channel.connectionStatus = :connectionStatus
+      where channel.connectionStatus = :connectionStatus
         and channel.enabled = true
       """)
   List<UUID> findAllConnectedChannelIds(
-      @Param("channelType") ChannelType channelType,
       @Param("connectionStatus") NotificationChannelStatus connectionStatus);
 }

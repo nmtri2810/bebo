@@ -28,7 +28,6 @@ public interface NotificationLogRepository extends JpaRepository<NotificationLog
       select log.id
       from NotificationLog log
       where log.status = :status
-        and log.channelType = :channelType
         and log.notificationType = :notificationType
         and log.nextRetryAt is not null
         and log.nextRetryAt <= :now
@@ -36,7 +35,6 @@ public interface NotificationLogRepository extends JpaRepository<NotificationLog
       """)
   List<UUID> findDueRetryIds(
       @Param("status") NotificationStatus status,
-      @Param("channelType") ChannelType channelType,
       @Param("notificationType") NotificationType notificationType,
       @Param("now") Instant now,
       Pageable pageable);
