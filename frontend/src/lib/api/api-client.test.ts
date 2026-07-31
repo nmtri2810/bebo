@@ -16,7 +16,7 @@ describe("apiRequest", () => {
     ).resolves.toBeUndefined();
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:8080/api/notification-channels/telegram",
+      "/api/notification-channels/telegram",
       expect.objectContaining({
         cache: "no-store",
         method: "DELETE",

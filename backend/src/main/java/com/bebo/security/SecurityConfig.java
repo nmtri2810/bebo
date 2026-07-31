@@ -88,6 +88,7 @@ public class SecurityConfig {
                         "/api/public/**",
                         "/api/ping",
                         "/actuator/health",
+                        "/actuator/health/**",
                         "/actuator/info")
                     .permitAll()
                     .anyRequest()
