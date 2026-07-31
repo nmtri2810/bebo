@@ -23,5 +23,59 @@ services:
       timeout: 5s
       retries: 10
 
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+
+    container_name: bebo-backend
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    environment:
+      # Port bên trong container luôn là 8080.
+      SERVER_PORT: 8080
+
+      # Không dùng localhost ở đây.
+      # "postgres" là tên service phía trên.
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-bebo}
+      DATABASE_USERNAME: ${POSTGRES_USER:-bebo}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-bebo}
+
+      # Origin của browser khi chạy local.
+      FRONTEND_URL: http://localhost:${FRONTEND_HOST_PORT:-3000}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    ports:
+      - "${BACKEND_HOST_PORT:-8080}:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+
+      args:
+        # Đây là URL mà browser sẽ gọi.
+        # Nó được đóng vào JavaScript trong lúc build.
+        NEXT_PUBLIC_API_URL: http://localhost:${BACKEND_HOST_PORT:-8080}
+
+    container_name: bebo-frontend
+    restart: unless-stopped
+
+    environment:
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
+
+    depends_on:
+      - backend
+
+    ports:
+      - "${FRONTEND_HOST_PORT:-3000}:3000"
+
 volumes:
   bebo-postgres-data:
