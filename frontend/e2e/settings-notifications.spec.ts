@@ -1,7 +1,5 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
-
 const user = {
   id: "00000000-0000-4000-8000-000000000001",
   email: "e2e@example.com",
@@ -51,7 +49,7 @@ async function seedAuth(page: Page) {
 async function mockApi(page: Page) {
   let telegramConnection = connectedTelegram;
 
-  await page.route(`${apiBaseUrl}/api/**`, async (route: Route) => {
+  await page.route("**/api/**", async (route: Route) => {
     const request = route.request();
     const url = new URL(request.url());
     const method = request.method();
